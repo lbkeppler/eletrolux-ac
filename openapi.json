@@ -1,0 +1,1385 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "OpenAPI definition",
+    "version": "0.2.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.developer.electrolux.one"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Get user appliances"
+    },
+    {
+      "name": "Get appliance info"
+    },
+    {
+      "name": "Get appliance state"
+    },
+    {
+      "name": "Get interactive maps"
+    },
+    {
+      "name": "Get memory maps"
+    },
+    {
+      "name": "Send command"
+    },
+    {
+      "name": "Get livestream configurations"
+    }
+  ],
+  "paths": {
+    "/api/v1/appliances/{applianceId}/command": {
+      "put": {
+        "tags": [
+          "Send command"
+        ],
+        "summary": "Send command to appliance",
+        "description": "This endpoint will execute the received command on the specified appliance, and will return nothing on a success",
+        "operationId": "sendCommandToAppliance",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applianceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "999011524_00:94700001-443E070ABC12"
+            },
+            "example": "999011524_00:94700001-443E070ABC12"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "example": {
+                  "mode": "COOL",
+                  "targetTemperatureC": 21
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Ok"
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Appliance already in desired state"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0003",
+                  "message": "Resource is forbidden for the user"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0004",
+                  "message": "Requested resource not found"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "Not acceptable",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0006",
+                  "message": "Command validation failed",
+                  "detail": "Appliance disconnected"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0005",
+                  "message": "Unexpected server error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appliances": {
+      "get": {
+        "tags": [
+          "Get user appliances"
+        ],
+        "summary": "Get user appliances",
+        "description": "This endpoint will return all the appliances of the user",
+        "operationId": "getUserAppliances",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "maxItems": 100,
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Appliance"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0003",
+                  "message": "Resource is forbidden for the user"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0004",
+                  "message": "Requested resource not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0005",
+                  "message": "Unexpected server error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appliances/{applianceId}/state": {
+      "get": {
+        "tags": [
+          "Get appliance state"
+        ],
+        "summary": "Get appliance state",
+        "description": "This endpoint will return the appliance state owned by the user",
+        "operationId": "getApplianceState",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applianceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "999011524_00:94700001-443E070ABC12"
+            },
+            "example": "999011524_00:94700001-443E070ABC12"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplianceState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0003",
+                  "message": "Resource is forbidden for the user"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0004",
+                  "message": "Requested resource not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0005",
+                  "message": "Unexpected server error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appliances/{applianceId}/info": {
+      "get": {
+        "tags": [
+          "Get appliance info"
+        ],
+        "summary": "Get appliance info",
+        "description": "This endpoint will return the appliance info owned by the user",
+        "operationId": "getApplianceInfo",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applianceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "999011524_00:94700001-443E070ABC12"
+            },
+            "example": "999011524_00:94700001-443E070ABC12"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplianceInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0003",
+                  "message": "Resource is forbidden for the user"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0004",
+                  "message": "Requested resource not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0005",
+                  "message": "Unexpected server error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appliances/{applianceId}/memoryMap": {
+      "get": {
+        "tags": [
+          "Get memory maps"
+        ],
+        "summary": "Get RVC memory maps",
+        "description": "This endpoint will return the memory maps of a Gordias Rvc",
+        "operationId": "getMemoryMaps",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applianceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": 9.004022813480006e+23
+            },
+            "example": 9.004022813480006e+23
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemoryMap"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0003",
+                  "message": "Resource is forbidden for the user"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0004",
+                  "message": "Requested resource not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0005",
+                  "message": "Unexpected server error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appliances/{applianceId}/interactiveMap": {
+      "get": {
+        "tags": [
+          "Get interactive maps"
+        ],
+        "summary": "Get RVC interactive maps",
+        "description": "This endpoint will return the interactive maps of a PUREi9 Rvc",
+        "operationId": "getInteractiveMaps",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applianceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": 9.00277470946004e+23
+            },
+            "example": 9.00277470946004e+23
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InteractiveMap"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0003",
+                  "message": "Resource is forbidden for the user"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0004",
+                  "message": "Requested resource not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0005",
+                  "message": "Unexpected server error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/configurations/livestream": {
+      "get": {
+        "tags": [
+          "Get livestream configurations"
+        ],
+        "summary": "Get livestream configurations",
+        "description": "Returns the livestream url and the supported appliance properties",
+        "operationId": "getLivestreamConfigurations",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Configuration"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0003",
+                  "message": "Resource is forbidden for the user"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0004",
+                  "message": "Requested resource not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "developers_0005",
+                  "message": "Unexpected server error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Appliance": {
+        "type": "object",
+        "properties": {
+          "applianceId": {
+            "type": "string",
+            "description": "Appliance ID",
+            "example": "999011524_00:94700001-443E070ABC12"
+          },
+          "applianceName": {
+            "type": "string",
+            "description": "Appliance name",
+            "example": "My Air Conditioner"
+          },
+          "applianceType": {
+            "type": "string",
+            "description": "Appliance type",
+            "example": "AC"
+          },
+          "created": {
+            "type": "string",
+            "description": "Timestamp indicating the creation time of this appliance",
+            "format": "date-time",
+            "example": "2022-07-20T08:19:06.521Z"
+          }
+        }
+      },
+      "ApplianceState": {
+        "type": "object",
+        "properties": {
+          "applianceId": {
+            "type": "string",
+            "description": "Appliance ID",
+            "example": "999011524_00:94700001-443E070ABC12"
+          },
+          "connectionState": {
+            "type": "string",
+            "description": "Connection state",
+            "example": "connected"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status",
+            "example": "enabled"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/ApplianceStateProperties"
+          }
+        }
+      },
+      "ApplianceStateProperties": {
+        "type": "object",
+        "properties": {
+          "reported": {
+            "type": "object"
+          }
+        },
+        "description": "Properties",
+        "example": {
+          "reported": {
+            "sleepMode": "OFF",
+            "cleanAirMode": "OFF",
+            "applianceInfo": {
+              "applianceType": "AC"
+            },
+            "temperatureRepresentation": "CELSIUS",
+            "displayLight": "DISPLAY_LIGHT_1",
+            "uiLockMode": false,
+            "schedulerMode": "OFF",
+            "targetTemperatureF": 64.4,
+            "targetTemperatureC": 18,
+            "applianceState": "OFF",
+            "FilterState": "GOOD",
+            "mode": "OFF",
+            "alerts": [],
+            "ambientTemperatureF": 71.6,
+            "filterState": "GOOD",
+            "fanSpeedSetting": "AUTO",
+            "networkInterface": {
+              "linkQualityIndicator": "VERY_GOOD",
+              "otaState": "IDLE",
+              "swVersion": "v1.9.1_srac",
+              "swAncAndRevision": "S00006778A",
+              "niuSwUpdateCurrentDescription": "A16323311A-S00006778A"
+            },
+            "verticalSwing": "OFF",
+            "startTime": 54000,
+            "stopTime": -1,
+            "ambientTemperatureC": 22,
+            "connectivityState": "connected"
+          }
+        }
+      },
+      "ApplianceInfo": {
+        "type": "object",
+        "properties": {
+          "applianceInfo": {
+            "$ref": "#/components/schemas/ApplianceInfoDTO"
+          },
+          "capabilities": {
+            "type": "object"
+          }
+        },
+        "example": {
+          "applianceInfo": {
+            "serialNumber": "94700001",
+            "pnc": "999011524",
+            "brand": "FRIGIDAIRE",
+            "deviceType": "PORTABLE_AIR_CONDITIONER",
+            "model": "GHPC132AB1",
+            "variant": "13KBTU",
+            "colour": "WHITE"
+          },
+          "capabilities": {
+            "alerts": {
+              "access": "read",
+              "type": "alert",
+              "values": {
+                "BUS_HIGH_VOLTAGE": {},
+                "COMMUNICATION_FAULT": {},
+                "DRAIN_PAN_FULL": {},
+                "INDOOR_DEFROST_THERMISTOR_FAULT": {}
+              }
+            },
+            "ambientTemperatureC": {
+              "access": "read",
+              "type": "temperature"
+            },
+            "ambientTemperatureF": {
+              "access": "read",
+              "type": "temperature"
+            },
+            "applianceState": {
+              "access": "read",
+              "type": "string",
+              "values": {
+                "OFF": {},
+                "RUNNING": {}
+              }
+            },
+            "cleanAirMode": {
+              "access": "readwrite",
+              "type": "string",
+              "values": {
+                "OFF": {},
+                "ON": {}
+              }
+            },
+            "displayLight": {
+              "access": "readwrite",
+              "type": "string",
+              "values": {
+                "DISPLAY_LIGHT_0": {},
+                "DISPLAY_LIGHT_1": {}
+              }
+            },
+            "executeCommand": {
+              "access": "write",
+              "schedulable": true,
+              "type": "string",
+              "values": {
+                "OFF": {},
+                "ON": {}
+              }
+            },
+            "fanSpeedSetting": {
+              "access": "readwrite",
+              "schedulable": true,
+              "type": "string",
+              "values": {
+                "AUTO": {},
+                "HIGH": {},
+                "LOW": {},
+                "MIDDLE": {}
+              }
+            },
+            "fanSpeedState": {
+              "access": "read",
+              "type": "string",
+              "values": {
+                "HIGH": {},
+                "LOW": {},
+                "MIDDLE": {}
+              }
+            },
+            "filterState": {
+              "access": "read",
+              "type": "string",
+              "values": {
+                "BUY": {},
+                "CHANGE": {},
+                "CLEAN": {},
+                "GOOD": {}
+              }
+            },
+            "mode": {
+              "access": "readwrite",
+              "schedulable": true,
+              "triggers": [
+                {
+                  "action": {
+                    "fanSpeedSetting": {
+                      "access": "readwrite",
+                      "values": {
+                        "HIGH": {},
+                        "LOW": {},
+                        "MIDDLE": {}
+                      }
+                    }
+                  },
+                  "condition": {
+                    "operand_1": "value",
+                    "operand_2": "FANONLY",
+                    "operator": "eq"
+                  }
+                },
+                {
+                  "action": {
+                    "fanSpeedSetting": {
+                      "access": "readwrite",
+                      "values": {
+                        "AUTO": {},
+                        "HIGH": {},
+                        "LOW": {},
+                        "MIDDLE": {}
+                      }
+                    }
+                  },
+                  "condition": {
+                    "operand_1": "value",
+                    "operand_2": "FANONLY",
+                    "operator": "ne"
+                  }
+                },
+                {
+                  "action": {
+                    "fanSpeedSetting": {
+                      "access": "read"
+                    }
+                  },
+                  "condition": {
+                    "operand_1": "value",
+                    "operand_2": "DRY",
+                    "operator": "eq"
+                  }
+                },
+                {
+                  "action": {
+                    "fanSpeedSetting": {
+                      "access": "readwrite"
+                    }
+                  },
+                  "condition": {
+                    "operand_1": "value",
+                    "operand_2": "DRY",
+                    "operator": "ne"
+                  }
+                },
+                {
+                  "action": {
+                    "targetTemperatureC": {
+                      "disabled": true,
+                      "type": "temperature"
+                    },
+                    "targetTemperatureF": {
+                      "disabled": true,
+                      "type": "temperature"
+                    }
+                  },
+                  "condition": {
+                    "operand_1": {
+                      "operand_1": "value",
+                      "operand_2": "FANONLY",
+                      "operator": "eq"
+                    },
+                    "operand_2": {
+                      "operand_1": "value",
+                      "operand_2": "DRY",
+                      "operator": "eq"
+                    },
+                    "operator": "or"
+                  }
+                },
+                {
+                  "action": {
+                    "targetTemperatureC": {
+                      "disabled": false,
+                      "type": "temperature"
+                    },
+                    "targetTemperatureF": {
+                      "disabled": false,
+                      "type": "temperature"
+                    }
+                  },
+                  "condition": {
+                    "operand_1": {
+                      "operand_1": "value",
+                      "operand_2": "FANONLY",
+                      "operator": "ne"
+                    },
+                    "operand_2": {
+                      "operand_1": "value",
+                      "operand_2": "DRY",
+                      "operator": "ne"
+                    },
+                    "operator": "and"
+                  }
+                },
+                {
+                  "action": {
+                    "fanSpeedSetting": {
+                      "disabled": true
+                    }
+                  },
+                  "condition": {
+                    "operand_1": "value",
+                    "operand_2": "AUTO",
+                    "operator": "eq"
+                  }
+                },
+                {
+                  "action": {
+                    "fanSpeedSetting": {
+                      "disabled": false
+                    }
+                  },
+                  "condition": {
+                    "operand_1": "value",
+                    "operand_2": "AUTO",
+                    "operator": "ne"
+                  }
+                },
+                {
+                  "action": {
+                    "sleepMode": {
+                      "access": "read"
+                    }
+                  },
+                  "condition": {
+                    "operand_1": {
+                      "operand_1": "value",
+                      "operand_2": "FANONLY",
+                      "operator": "eq"
+                    },
+                    "operand_2": {
+                      "operand_1": "value",
+                      "operand_2": "DRY",
+                      "operator": "eq"
+                    },
+                    "operator": "or"
+                  }
+                },
+                {
+                  "action": {
+                    "sleepMode": {
+                      "access": "readwrite"
+                    }
+                  },
+                  "condition": {
+                    "operand_1": {
+                      "operand_1": "value",
+                      "operand_2": "FANONLY",
+                      "operator": "ne"
+                    },
+                    "operand_2": {
+                      "operand_1": "value",
+                      "operand_2": "DRY",
+                      "operator": "ne"
+                    },
+                    "operator": "and"
+                  }
+                },
+                {
+                  "action": {
+                    "displayLight": {
+                      "access": "read"
+                    }
+                  },
+                  "condition": {
+                    "operand_1": {
+                      "operand_1": "sleepMode",
+                      "operand_2": "OFF",
+                      "operator": "eq"
+                    },
+                    "operand_2": {
+                      "operand_1": "mode",
+                      "operand_2": "FANONLY",
+                      "operator": "eq"
+                    },
+                    "operator": "and"
+                  }
+                },
+                {
+                  "action": {
+                    "displayLight": {
+                      "access": "read"
+                    }
+                  },
+                  "condition": {
+                    "operand_1": {
+                      "operand_1": "sleepMode",
+                      "operand_2": "OFF",
+                      "operator": "eq"
+                    },
+                    "operand_2": {
+                      "operand_1": "mode",
+                      "operand_2": "DRY",
+                      "operator": "eq"
+                    },
+                    "operator": "and"
+                  }
+                },
+                {
+                  "action": {
+                    "displayLight": {
+                      "access": "readwrite"
+                    }
+                  },
+                  "condition": {
+                    "operand_1": {
+                      "operand_1": "sleepMode",
+                      "operand_2": "OFF",
+                      "operator": "eq"
+                    },
+                    "operand_2": {
+                      "operand_1": "mode",
+                      "operand_2": "COOL",
+                      "operator": "eq"
+                    },
+                    "operator": "and"
+                  }
+                },
+                {
+                  "action": {
+                    "displayLight": {
+                      "access": "readwrite"
+                    }
+                  },
+                  "condition": {
+                    "operand_1": {
+                      "operand_1": "sleepMode",
+                      "operand_2": "OFF",
+                      "operator": "eq"
+                    },
+                    "operand_2": {
+                      "operand_1": "mode",
+                      "operand_2": "AUTO",
+                      "operator": "eq"
+                    },
+                    "operator": "and"
+                  }
+                }
+              ],
+              "type": "string",
+              "values": {
+                "AUTO": {},
+                "COOL": {},
+                "DRY": {},
+                "FANONLY": {},
+                "OFF": {
+                  "disabled": true
+                }
+              }
+            },
+            "schedulerMode": {
+              "access": "readwrite",
+              "type": "string",
+              "values": {
+                "OFF": {},
+                "ON": {}
+              }
+            },
+            "targetTemperatureC": {
+              "access": "readwrite",
+              "default": 15.56,
+              "max": 32.22,
+              "min": 15.56,
+              "schedulable": true,
+              "step": 1,
+              "type": "temperature"
+            },
+            "targetTemperatureF": {
+              "access": "readwrite",
+              "default": 60,
+              "max": 90,
+              "min": 60,
+              "schedulable": true,
+              "step": 1,
+              "type": "temperature"
+            },
+            "temperatureRepresentation": {
+              "access": "readwrite",
+              "type": "string",
+              "values": {
+                "CELSIUS": {},
+                "FAHRENHEIT": {}
+              }
+            },
+            "uiLockMode": {
+              "access": "readwrite",
+              "type": "boolean",
+              "values": {
+                "OFF": {},
+                "ON": {}
+              }
+            },
+            "verticalSwing": {
+              "access": "readwrite",
+              "type": "string",
+              "values": {
+                "OFF": {},
+                "ON": {}
+              }
+            }
+          }
+        }
+      },
+      "ApplianceInfoDTO": {
+        "type": "object",
+        "properties": {
+          "serialNumber": {
+            "type": "string"
+          },
+          "pnc": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "deviceType": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          },
+          "colour": {
+            "type": "string"
+          }
+        }
+      },
+      "MemoryMap": {
+        "type": "object",
+        "properties": {
+          "rooms": {
+            "type": "array",
+            "description": "Rooms",
+            "example": [
+              {
+                "Id": 11,
+                "Name": "Storage"
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/MemoryMapRoom"
+            }
+          },
+          "name": {
+            "type": "string",
+            "description": "Map name",
+            "example": "Map 1"
+          },
+          "id": {
+            "type": "string",
+            "description": "Map id",
+            "example": "1717498266"
+          },
+          "currentMap": {
+            "type": "boolean",
+            "description": "Current map",
+            "example": true
+          }
+        }
+      },
+      "MemoryMapRoom": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Room name",
+            "example": "Bedroom"
+          },
+          "id": {
+            "type": "string",
+            "description": "Room id",
+            "example": "10"
+          }
+        },
+        "description": "Rooms",
+        "example": [
+          {
+            "Id": 11,
+            "Name": "Storage"
+          }
+        ]
+      },
+      "InteractiveMap": {
+        "type": "object",
+        "properties": {
+          "zones": {
+            "type": "array",
+            "description": "Zones",
+            "example": [
+              {
+                "name": "Bathroom",
+                "id": "66a28poi-68b8-41e6-99d9-125b3623bc0d",
+                "zoneType": "clean",
+                "vertices": [
+                  {
+                    "x": -3.147479,
+                    "y": -2.607366
+                  },
+                  {
+                    "x": -3.163067,
+                    "y": -0.92906797
+                  },
+                  {
+                    "x": -1.55375,
+                    "y": -0.7167846
+                  },
+                  {
+                    "x": -1.4418235,
+                    "y": -2.6256099
+                  }
+                ],
+                "roomCategory": 4,
+                "powerMode": 1
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/InteractiveMapZone"
+            }
+          },
+          "name": {
+            "type": "string",
+            "description": "Map name",
+            "example": "Map 1"
+          },
+          "id": {
+            "type": "string",
+            "description": "Map id",
+            "example": "58da81e5-586c-440b-b62b-42a66fa077ac"
+          },
+          "rotation": {
+            "type": "number",
+            "description": "Map rotation",
+            "format": "double",
+            "example": -1.2728935
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Timestamp",
+            "format": "date-time",
+            "example": "2022-07-20T08:19:06.521Z"
+          }
+        }
+      },
+      "InteractiveMapZone": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Zone name",
+            "example": "Bedroom"
+          },
+          "id": {
+            "type": "string",
+            "description": "Zone id",
+            "example": "123abc0c-68b8-41e6-99d9-125b3623bc0d"
+          },
+          "zoneType": {
+            "type": "string",
+            "description": "Zone type",
+            "example": "clean"
+          },
+          "roomCategory": {
+            "type": "integer",
+            "description": "Room category",
+            "format": "int32",
+            "example": 4
+          },
+          "powerMode": {
+            "type": "integer",
+            "description": "Power mode",
+            "format": "int32",
+            "example": 1
+          },
+          "vertices": {
+            "type": "array",
+            "description": "Verticles",
+            "example": 1,
+            "items": {
+              "$ref": "#/components/schemas/InteractiveMapZoneVerticles"
+            }
+          }
+        },
+        "description": "Zones",
+        "example": [
+          {
+            "name": "Bathroom",
+            "id": "66a28poi-68b8-41e6-99d9-125b3623bc0d",
+            "zoneType": "clean",
+            "vertices": [
+              {
+                "x": -3.147479,
+                "y": -2.607366
+              },
+              {
+                "x": -3.163067,
+                "y": -0.92906797
+              },
+              {
+                "x": -1.55375,
+                "y": -0.7167846
+              },
+              {
+                "x": -1.4418235,
+                "y": -2.6256099
+              }
+            ],
+            "roomCategory": 4,
+            "powerMode": 1
+          }
+        ]
+      },
+      "InteractiveMapZoneVerticles": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number",
+            "format": "double"
+          },
+          "y": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "description": "Verticles",
+        "example": 1
+      },
+      "Configuration": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "URL",
+            "example": "https://live.eu.developer.electrolux.one/api/v1/events"
+          },
+          "appliances": {
+            "type": "array",
+            "description": "Appliance properties supported by livestreams",
+            "example": [
+              {
+                "applianceId": "999011524_00:94700001-443E070ABC12",
+                "properties": [
+                  "applianceState",
+                  "alerts"
+                ]
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Configuration"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
