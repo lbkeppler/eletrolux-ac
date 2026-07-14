@@ -1,0 +1,63 @@
+{
+  "applianceId": "900000000_00:11111111-222E070ABCDE",
+  "connectionState": "connected",
+  "status": "enabled",
+  "properties": {
+    "reported": {
+      "sleepMode": "OFF",
+      "cleanAirMode": "OFF",
+      "applianceInfo": {
+        "applianceType": "CA",
+        "capabilityHash": "4729d30541a4e67e73014b49e8387a700a985783e9ab87e641ecf9f758578323"
+      },
+      "displayLight": "DISPLAY_LIGHT_0",
+      "temperatureRepresentation": "CELSIUS",
+      "currentEnergyUsePercent": 100,
+      "cpv": "00",
+      "targetTemperatureF": 69.8,
+      "targetTemperatureC": 21.0,
+      "flapPosition": 0,
+      "comfortAir": "OFF",
+      "applianceState": "OFF",
+      "evaporatorDefrostState": "NOT_DEFROSTING",
+      "applianceMainBoardSwVersion": "007687D34",
+      "mode": "COOL",
+      "alerts": [
+        {
+          "severity": "FAULT",
+          "acknowledgeStatus": "NOT_NEEDED",
+          "code": "INTERNAL_TUBE_TEMPERATURE_SENSOR",
+          "applianceCode": "100"
+        },
+        {
+          "severity": "FAULT",
+          "acknowledgeStatus": "NOT_NEEDED",
+          "code": "COMMUNICATION_FAULT",
+          "applianceCode": "1000"
+        },
+        {
+          "severity": "FAULT",
+          "acknowledgeStatus": "NOT_NEEDED",
+          "code": "LOW_VOLTAGE_POWER_SOURCE",
+          "applianceCode": "4000"
+        }
+      ],
+      "soundVolume": 1,
+      "filterState": "CHANGE",
+      "fanSpeedSetting": "HIGH",
+      "autoSenseMode": "OFF",
+      "networkInterface": {
+        "swVersion": "v3.0.0_argo",
+        "otaState": "IDLE",
+        "linkQualityIndicator": "EXCELLENT",
+        "niuSwUpdateCurrentDescription": "A21023902A-S00007029A",
+        "swAncAndRevision": "S00007029A"
+      },
+      "stopTime": 0,
+      "flapOscillate": "ON",
+      "connectivityState": "connected",
+      "ambientTemperatureF": 64.4,
+      "ambientTemperatureC": 18.0
+    }
+  }
+}
