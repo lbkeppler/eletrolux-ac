@@ -120,6 +120,13 @@ class ElectroluxApiClient:
                 raise ElectroluxApiError(
                     f"API error {resp.status} for {url}", status=resp.status
                 )
+        except TimeoutError as err:
+            # A ClientTimeout(total=...) raises asyncio.TimeoutError (aliased to
+            # the builtin TimeoutError in 3.11+), which is NOT a ClientError.
+            # Wrap it with a "timed out" message so async_get_info_with_retry
+            # recognizes it as retryable — the real /info endpoint times out
+            # intermittently at the gateway.
+            raise ElectroluxApiError(f"Request timed out for {url}") from err
         except ClientError as err:
             raise ElectroluxApiError(f"Connection error: {err}") from err
 
@@ -168,7 +175,9 @@ class ElectroluxApiClient:
         timeout (``ElectroluxApiError`` whose message says "timed out"). Both
         shapes are transient and retryable; real auth/other errors are NOT.
 
-        Retries up to ``attempts`` times with 1s, 2s, 4s backoff, then raises
+        Retries up to ``attempts`` times with exponential backoff between tries
+        (``2 ** attempt`` seconds: 1s, 2s, ... — with the default 3 attempts
+        that is a 1s then a 2s sleep, no sleep after the last try), then raises
         ``ElectroluxApiError`` so the caller (coordinator) can fall back to its
         last-good cache. ``asyncio.sleep`` is used for the backoff so tests can
         patch it.

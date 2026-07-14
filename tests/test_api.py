@@ -22,6 +22,26 @@ def _load(name):
     return json.loads((FIXTURES / name).read_text())
 
 
+def _ctx_returning(payload):
+    """A minimal async-context-manager mimicking aiohttp's response for a 200
+    JSON body — enough for _request's success branch (status + text())."""
+    body = json.dumps(payload)
+
+    class _Resp:
+        status = 200
+
+        async def text(self):
+            return body
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+    return _Resp()
+
+
 @pytest.fixture
 async def session(aioclient_mock):
     # Bind the session to aioclient_mock so requests are intercepted by the
@@ -195,6 +215,54 @@ async def test_get_info_retry_recovers_from_connection_timeout(monkeypatch):
 
     result = await client.async_get_info_with_retry("app1")
     assert result is real
+    assert calls["n"] == 3
+    assert sleeps == [1, 2]
+
+
+async def test_request_wraps_real_total_timeout_as_retryable():
+    """A real aiohttp ClientTimeout(total=...) raises asyncio.TimeoutError, which
+    is NOT a ClientError. _request must wrap it as an ElectroluxApiError whose
+    message says 'timed out' so async_get_info_with_retry treats it as retryable.
+    This drives the REAL _request path (not a hand-mocked error)."""
+
+    class _TimingOutSession:
+        def request(self, *args, **kwargs):
+            raise asyncio.TimeoutError()
+
+    client = ElectroluxApiClient(_TimingOutSession(), "key", "acc", "ref")
+    with pytest.raises(ElectroluxApiError) as exc:
+        await client.async_get_info("app1")
+    # The message must be recognized as a timeout by the retry classifier.
+    assert "timed out" in str(exc.value).lower()
+    # And it must NOT be an auth error (would wrongly trigger reauth).
+    assert not isinstance(exc.value, ElectroluxAuthError)
+
+
+async def test_get_info_retry_recovers_from_real_total_timeout(monkeypatch):
+    """End-to-end: the real _request raises asyncio.TimeoutError twice, then the
+    request succeeds — the retry loop must recover, proving the total-timeout
+    shape actually flows through the retry machinery."""
+    real = _load("info.json")
+    calls = {"n": 0}
+
+    class _FlakySession:
+        def request(self, *args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise asyncio.TimeoutError()
+            return _ctx_returning(real)
+
+    client = ElectroluxApiClient(_FlakySession(), "key", "acc", "ref")
+
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay, *a, **k):
+        sleeps.append(delay)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    result = await client.async_get_info_with_retry("app1")
+    assert result == real
     assert calls["n"] == 3
     assert sleeps == [1, 2]
 
