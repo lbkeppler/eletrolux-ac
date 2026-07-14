@@ -73,6 +73,8 @@ class ElectroluxSwitch(ElectroluxEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         val = self.appliance.reported.get(self._spec.prop)
+        # uiLockMode reports a JSON bool; the others report "ON"/"OFF" (or
+        # DISPLAY_LIGHT_0/1) strings — handle the bool case first.
         if isinstance(val, bool):
             return val
         return val == self._spec.on_value

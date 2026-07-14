@@ -147,3 +147,16 @@ def test_hvac_mode_off_when_appliance_off():
     coord.data = {data.appliance_id: data}
     entity = ElectroluxClimate(coord, data.appliance_id)
     assert entity.hvac_mode == HVACMode.OFF
+
+
+def test_hvac_mode_unmapped_but_running_is_not_off():
+    """A running AC reporting a mode we don't map must not render as Off."""
+    state = _load("state.json")
+    state["properties"]["reported"]["applianceState"] = "RUNNING"
+    state["properties"]["reported"]["mode"] = "SOME_BR_MODE"
+    data = parse_appliance(_load("appliances.json")[0], _load("info.json"), state)
+    coord = MagicMock()
+    coord.data = {data.appliance_id: data}
+    entity = ElectroluxClimate(coord, data.appliance_id)
+    assert entity.hvac_mode != HVACMode.OFF
+    assert entity.hvac_mode in entity.hvac_modes

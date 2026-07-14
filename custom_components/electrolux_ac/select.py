@@ -6,13 +6,14 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .models import ElectroluxConfigEntry
 
-# No multi-value readwrite string capabilities that aren't covered by climate.
-SELECT_CAPABILITIES: tuple = ()
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ElectroluxConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    # The AC exposes no multi-value readwrite string capability that isn't
+    # already covered by the climate entity (mode → HVAC, fanSpeed → fan), so
+    # this platform intentionally creates no entities. It exists so the select
+    # platform is registered and future appliances can add selects here.
     async_add_entities([])

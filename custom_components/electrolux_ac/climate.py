@@ -1,6 +1,7 @@
 """Climate platform for Electrolux AC."""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from homeassistant.components.climate import (
@@ -35,6 +36,8 @@ from .const import (
 )
 from .entity import ElectroluxEntity
 from .models import ElectroluxConfigEntry
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -128,7 +131,16 @@ class ElectroluxClimate(ElectroluxEntity, ClimateEntity):
         api_mode = reported.get(PROP_MODE)
         if api_mode in (None, STATE_OFF):
             return HVACMode.OFF
-        return HVAC_MODE_MAP.get(api_mode, HVACMode.OFF)
+        mapped = HVAC_MODE_MAP.get(api_mode)
+        if mapped is not None:
+            return mapped
+        # Running with a mode we don't map (e.g. a region-specific value):
+        # don't render an on AC as Off. Prefer any non-OFF mode we support.
+        _LOGGER.debug("Unmapped AC mode %r while running", api_mode)
+        for mode in self.hvac_modes:
+            if mode != HVACMode.OFF:
+                return mode
+        return HVACMode.OFF
 
     @property
     def fan_mode(self) -> str | None:
