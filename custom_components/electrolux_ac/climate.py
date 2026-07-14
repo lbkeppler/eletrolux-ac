@@ -17,9 +17,9 @@ from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .capabilities import SWING_KEYS
 from .const import (
-    FAN_MODE_MAP,
-    FAN_MODE_MAP_REVERSE,
+    FAN_DISPLAY,
     HVAC_MODE_MAP,
     HVAC_MODE_MAP_REVERSE,
     PROP_AMBIENT_TEMP_C,
@@ -30,7 +30,6 @@ from .const import (
     PROP_TARGET_TEMP_C,
     PROP_TARGET_TEMP_F,
     PROP_TEMP_REPRESENTATION,
-    PROP_VERTICAL_SWING,
     STATE_OFF,
     UNIT_FAHRENHEIT,
 )
@@ -63,7 +62,12 @@ class ElectroluxClimate(ElectroluxEntity, ClimateEntity):
         caps = self.appliance.capabilities
 
         modes: list[HVACMode] = []
-        for api_mode in caps.get(PROP_MODE, {}).get("values", {}):
+        for api_mode, spec in caps.get(PROP_MODE, {}).get("values", {}).items():
+            # Skip pseudo-values the appliance flags as disabled (e.g.
+            # Frigidaire's OFF: {"disabled": true}) — HVACMode.OFF is added
+            # separately, so honouring it would only duplicate it.
+            if isinstance(spec, dict) and spec.get("disabled"):
+                continue
             if api_mode in HVAC_MODE_MAP:
                 modes.append(HVAC_MODE_MAP[api_mode])
         modes.append(HVACMode.OFF)
@@ -72,16 +76,41 @@ class ElectroluxClimate(ElectroluxEntity, ClimateEntity):
         features = ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
         if PROP_TARGET_TEMP_C in caps:
             features |= ClimateEntityFeature.TARGET_TEMPERATURE
+
+        # Fan: build per-appliance forward/reverse maps from the appliance's own
+        # fanSpeedSetting values, in API order. Known tokens (AUTO/LOW/MIDDLE/
+        # HIGH) use the HA canonical fan strings via FAN_DISPLAY; unknown tokens
+        # (TURBO, and anything future) fall back to the lowercased token so they
+        # are never dropped. We never use the lossy module-level FAN_MODE_MAP.
+        self._fan_forward: dict[str, str] = {}
+        self._fan_reverse: dict[str, str] = {}
         if PROP_FAN_SPEED in caps:
-            features |= ClimateEntityFeature.FAN_MODE
-            self._attr_fan_modes = [
-                FAN_MODE_MAP[v]
-                for v in caps[PROP_FAN_SPEED].get("values", {})
-                if v in FAN_MODE_MAP
-            ]
-        if PROP_VERTICAL_SWING in caps:
+            for token in caps[PROP_FAN_SPEED].get("values", {}):
+                ha_mode = FAN_DISPLAY.get(token, token.lower())
+                self._fan_forward[token] = ha_mode
+                self._fan_reverse[ha_mode] = token
+            if self._fan_forward:
+                features |= ClimateEntityFeature.FAN_MODE
+                self._attr_fan_modes = list(self._fan_forward.values())
+
+        # Swing: pick the first swing key the appliance actually exposes as a
+        # readwrite {ON,OFF} control (Frigidaire: verticalSwing; YI09F:
+        # flapOscillate). Only enable SWING_MODE if one is found.
+        self._swing_prop: str | None = None
+        for key in SWING_KEYS:
+            cap = caps.get(key)
+            if not isinstance(cap, dict):
+                continue
+            if cap.get("access") != "readwrite":
+                continue
+            if set(cap.get("values", {})) != {"ON", "OFF"}:
+                continue
+            self._swing_prop = key
+            break
+        if self._swing_prop is not None:
             features |= ClimateEntityFeature.SWING_MODE
             self._attr_swing_modes = [SWING_ON, SWING_OFF]
+
         self._attr_supported_features = features
 
     @property
@@ -144,11 +173,18 @@ class ElectroluxClimate(ElectroluxEntity, ClimateEntity):
 
     @property
     def fan_mode(self) -> str | None:
-        return FAN_MODE_MAP.get(self.appliance.reported.get(PROP_FAN_SPEED))
+        token = self.appliance.reported.get(PROP_FAN_SPEED)
+        if token is None:
+            return None
+        # Per-appliance map; unknown reported tokens fall back to lowercased so
+        # a value outside the capability list is still shown, never dropped.
+        return self._fan_forward.get(token, str(token).lower())
 
     @property
     def swing_mode(self) -> str | None:
-        val = self.appliance.reported.get(PROP_VERTICAL_SWING)
+        if self._swing_prop is None:
+            return None
+        val = self.appliance.reported.get(self._swing_prop)
         if val is None:
             return None
         return SWING_ON if val == "ON" else SWING_OFF
@@ -189,12 +225,18 @@ class ElectroluxClimate(ElectroluxEntity, ClimateEntity):
             await self.coordinator.async_send_command(self._appliance_id, command)
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
+        token = self._fan_reverse.get(fan_mode)
+        if token is None:
+            _LOGGER.warning("Unknown fan mode %r for %s", fan_mode, self._appliance_id)
+            return
         await self.coordinator.async_send_command(
-            self._appliance_id, {"fanSpeedSetting": FAN_MODE_MAP_REVERSE[fan_mode]}
+            self._appliance_id, {PROP_FAN_SPEED: token}
         )
 
     async def async_set_swing_mode(self, swing_mode: str) -> None:
+        if self._swing_prop is None:
+            return
         await self.coordinator.async_send_command(
             self._appliance_id,
-            {"verticalSwing": "ON" if swing_mode == SWING_ON else "OFF"},
+            {self._swing_prop: "ON" if swing_mode == SWING_ON else "OFF"},
         )

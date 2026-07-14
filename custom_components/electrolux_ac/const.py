@@ -70,11 +70,20 @@ HVAC_MODE_MAP_REVERSE: dict[HVACMode, str] = {
     v: k for k, v in HVAC_MODE_MAP.items()
 }
 
-# API fan-speed string <-> HA fan mode
-FAN_MODE_MAP: dict[str, str] = {
+# Display hint for KNOWN API fan-speed tokens -> HA's canonical fan-mode
+# strings. This is only a *hint*: the climate entity builds per-appliance
+# forward/reverse maps from the appliance's own ``fanSpeedSetting`` values, and
+# any token NOT listed here (TURBO, or any future token) falls back to the
+# lowercased token so it is never silently dropped.
+FAN_DISPLAY: dict[str, str] = {
     "AUTO": FAN_AUTO,
     "LOW": FAN_LOW,
     "MIDDLE": FAN_MEDIUM,
     "HIGH": FAN_HIGH,
 }
+
+# Deprecated lossy global maps. Kept only for backward-compatibility with any
+# external importer; climate no longer uses these because ``.get`` on them
+# drops unknown tokens (e.g. TURBO). Prefer the per-entity maps in climate.py.
+FAN_MODE_MAP: dict[str, str] = dict(FAN_DISPLAY)
 FAN_MODE_MAP_REVERSE: dict[str, str] = {v: k for k, v in FAN_MODE_MAP.items()}
