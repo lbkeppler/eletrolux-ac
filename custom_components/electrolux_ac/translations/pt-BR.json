@@ -42,17 +42,32 @@
           "buy": "Comprar novo"
         }
       },
-      "link_quality": {"name": "Sinal Wi-Fi"}
+      "link_quality": {"name": "Sinal Wi-Fi"},
+      "appliance_state": {"name": "Estado do aparelho"},
+      "current_energy_use_percent": {"name": "Consumo de energia"},
+      "evaporator_defrost_state": {"name": "Estado de degelo"}
     },
     "switch": {
       "sleep_mode": {"name": "Modo noturno"},
       "clean_air_mode": {"name": "Ar limpo"},
       "ui_lock_mode": {"name": "Trava do painel"},
       "scheduler_mode": {"name": "Agendador"},
-      "display_light": {"name": "Luz do display"}
+      "display_light": {"name": "Luz do display"},
+      "auto_sense_mode": {"name": "Sensor automático"},
+      "batch_scheduler_mode": {"name": "Agendador"},
+      "comfort_air": {"name": "Ar confortável"},
+      "sound_volume": {"name": "Sons"}
+    },
+    "select": {
+      "flap_position": {"name": "Posição da aleta"}
+    },
+    "number": {
+      "display_light": {"name": "Luz do display"},
+      "stop_time": {"name": "Temporizador de desligamento"}
     },
     "binary_sensor": {
-      "connectivity": {"name": "Conectividade"}
+      "connectivity": {"name": "Conectividade"},
+      "clean_air_mode": {"name": "Ar limpo"}
     }
   }
 }

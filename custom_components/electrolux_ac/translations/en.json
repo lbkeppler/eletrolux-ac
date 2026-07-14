@@ -42,17 +42,32 @@
           "buy": "Buy new"
         }
       },
-      "link_quality": {"name": "Wi-Fi signal"}
+      "link_quality": {"name": "Wi-Fi signal"},
+      "appliance_state": {"name": "Appliance state"},
+      "current_energy_use_percent": {"name": "Energy use"},
+      "evaporator_defrost_state": {"name": "Defrost state"}
     },
     "switch": {
       "sleep_mode": {"name": "Sleep mode"},
       "clean_air_mode": {"name": "Clean air"},
       "ui_lock_mode": {"name": "Panel lock"},
       "scheduler_mode": {"name": "Scheduler"},
-      "display_light": {"name": "Display light"}
+      "display_light": {"name": "Display light"},
+      "auto_sense_mode": {"name": "Auto sense"},
+      "batch_scheduler_mode": {"name": "Scheduler"},
+      "comfort_air": {"name": "Comfort air"},
+      "sound_volume": {"name": "Beeps"}
+    },
+    "select": {
+      "flap_position": {"name": "Flap position"}
+    },
+    "number": {
+      "display_light": {"name": "Display light"},
+      "stop_time": {"name": "Stop timer"}
     },
     "binary_sensor": {
-      "connectivity": {"name": "Connectivity"}
+      "connectivity": {"name": "Connectivity"},
+      "clean_air_mode": {"name": "Clean air"}
     }
   }
 }
