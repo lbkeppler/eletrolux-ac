@@ -9,8 +9,8 @@ tolerant ``coerce_value`` helper.
 """
 from __future__ import annotations
 
-from homeassistant.components.number import NumberEntity
-from homeassistant.const import EntityCategory
+from homeassistant.components.number import NumberDeviceClass, NumberEntity
+from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -24,10 +24,15 @@ def build_numbers(
     coordinator: ElectroluxCoordinator, appliance_id: str
 ) -> list[NumberEntity]:
     caps = coordinator.data[appliance_id].capabilities
+    reported = coordinator.data[appliance_id].reported
     numbers: list[NumberEntity] = []
     for name, cap in caps.items():
         kind, spec = classify_capability(name, cap)
         if kind is EntityKind.NUMBER:
+            # R3: a phantom control (classifies as a number but is never in the
+            # reported state) has no valid read/write target — skip it.
+            if name not in reported:
+                continue
             numbers.append(ElectroluxNumber(coordinator, appliance_id, name, spec))
     return numbers
 
@@ -52,15 +57,24 @@ class ElectroluxNumber(ElectroluxEntity, NumberEntity):
         key = snake_case(prop)
         self._attr_translation_key = key
         self._attr_unique_id = f"{appliance_id}_{key}"
+        # min/max/step arrive in DISPLAY units (hours for a duration cap); the
+        # raw API value is scaled by _scale (seconds = hours * 3600). _scale
+        # defaults to 1, so every non-duration number passes through unchanged.
+        self._scale = spec.get("scale", 1)
         self._attr_native_min_value = spec["min"]
         self._attr_native_max_value = spec["max"]
         self._attr_native_step = spec["step"]
+        if spec.get("unit"):
+            self._attr_native_unit_of_measurement = UnitOfTime.HOURS
+        if spec.get("device_class") == "duration":
+            self._attr_device_class = NumberDeviceClass.DURATION
 
     @property
     def native_value(self) -> float | None:
-        return coerce_value(self.appliance.reported.get(self._prop))
+        raw = coerce_value(self.appliance.reported.get(self._prop))
+        return None if raw is None else raw / self._scale
 
     async def async_set_native_value(self, value: float) -> None:
         await self.coordinator.async_send_command(
-            self._appliance_id, {self._prop: int(value)}
+            self._appliance_id, {self._prop: int(round(value * self._scale))}
         )
