@@ -2752,17 +2752,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: pip install -r requirements_test.txt
       - run: pytest -v
 ```
 
 `requirements_test.txt`:
 ```
-pytest-homeassistant-custom-component
+pytest-homeassistant-custom-component==0.13.346
 ```
 
-> **Implementer note:** pin `pytest-homeassistant-custom-component` to the version whose bundled HA matches `hacs.json`'s `homeassistant` floor once you confirm the local test run passes (e.g. `pytest-homeassistant-custom-component==0.13.xxx`). The research flagged that the newest PHACC needs Python 3.14; if CI's 3.13 conflicts with the pinned PHACC, either bump the workflow to the Python version that PHACC requires or pin an older PHACC that supports 3.13. Resolve by running `pip index versions pytest-homeassistant-custom-component` and picking a compatible pair; update the `python-version` accordingly.
+> **Environment note (already provisioned locally):** the test environment uses **Python 3.14 + `pytest-homeassistant-custom-component==0.13.346`, which bundles Home Assistant 2026.7.2** — the exact HA version running on the user's HAOS server, and one that ships `AddConfigEntryEntitiesCallback`. Run all `pytest` commands with the repo's `.venv` interpreter (`.venv/Scripts/python.exe -m pytest ...`). Do not downgrade PHACC — an older one bundles an HA too old for `AddConfigEntryEntitiesCallback`.
 
 `README.md`:
 ```markdown
