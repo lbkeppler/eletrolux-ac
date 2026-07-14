@@ -28,6 +28,9 @@ CONF_REFRESH_TOKEN = "refresh_token"
 # API network limits
 POLL_INTERVAL_MINUTES = 5
 SSE_RECONNECT_SECONDS = 10
+SSE_RECONNECT_MAX_SECONDS = 300
+# Consider the stream "healthy" (reset backoff) after this many seconds connected.
+SSE_HEALTHY_SECONDS = 60
 
 # Capability / reported-state property names (from openapi.json)
 PROP_MODE = "mode"

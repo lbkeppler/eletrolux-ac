@@ -1,7 +1,7 @@
 import asyncio
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -198,3 +198,51 @@ async def test_sse_loop_applies_event(hass):
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
+
+
+async def test_send_command_execute_not_stored_in_reported(hass):
+    entry = _entry()
+    entry.add_to_hass(hass)
+    coord = ElectroluxCoordinator(hass, entry, _mock_client())
+    coord.data = await coord._async_update_data()
+    aid = "999011524_00:94700001-443E070ABC12"
+    await coord.async_send_command(aid, {"executeCommand": "ON"})
+    reported = coord.data[aid].reported
+    # executeCommand is write-only — must not linger in reported...
+    assert "executeCommand" not in reported
+    # ...but applianceState is derived from it.
+    assert reported["applianceState"] == "RUNNING"
+    await coord.async_send_command(aid, {"executeCommand": "OFF"})
+    assert coord.data[aid].reported["applianceState"] == "OFF"
+
+
+async def test_sse_reconnect_backoff_grows_on_immediate_failures(hass):
+    """A stream that EOFs immediately must back off exponentially, not hammer."""
+    entry = _entry()
+    entry.add_to_hass(hass)
+    client = _mock_client()
+
+    async def immediate_eof():
+        # ends right away without yielding — simulates a flapping stream
+        return
+        yield  # pragma: no cover — makes this an async generator
+
+    client.async_iter_events = immediate_eof
+    coord = ElectroluxCoordinator(hass, entry, client)
+    coord.data = await coord._async_update_data()
+
+    sleeps: list[float] = []
+    real_sleep = asyncio.sleep
+
+    async def fake_sleep(delay, *args, **kwargs):
+        sleeps.append(delay)
+        if len(sleeps) >= 4:
+            raise asyncio.CancelledError
+        await real_sleep(0)
+
+    with patch("custom_components.electrolux_ac.coordinator.asyncio.sleep", fake_sleep):
+        with pytest.raises(asyncio.CancelledError):
+            await coord.async_run_sse()
+
+    # 10 → 20 → 40 → 80 : doubling each immediate failure
+    assert sleeps[:4] == [10, 20, 40, 80]

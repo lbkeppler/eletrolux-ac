@@ -23,6 +23,8 @@ from .const import (
     POLL_INTERVAL_MINUTES,
     PROP_APPLIANCE_STATE,
     PROP_EXECUTE_COMMAND,
+    SSE_HEALTHY_SECONDS,
+    SSE_RECONNECT_MAX_SECONDS,
     SSE_RECONNECT_SECONDS,
     STATE_OFF,
     STATE_RUNNING,
@@ -157,8 +159,21 @@ class ElectroluxCoordinator(DataUpdateCoordinator[dict[str, ApplianceData]]):
             )
 
     async def async_run_sse(self) -> None:
-        """Long-lived SSE listen loop with reconnect."""
+        """Long-lived SSE listen loop with exponential reconnect backoff.
+
+        A flapping stream (e.g. the API's 1-concurrent-SSE-channel limit, or a
+        server that accepts the GET then immediately EOFs) must NOT reconnect
+        every ``SSE_RECONNECT_SECONDS`` forever: at 10 s that is ~17k calls/day,
+        over the 5000/day free-tier quota, which would then also 429 the poll.
+        So the backoff doubles each consecutive failure up to
+        ``SSE_RECONNECT_MAX_SECONDS`` and only resets once the stream has stayed
+        connected for ``SSE_HEALTHY_SECONDS``.
+        """
+        backoff = SSE_RECONNECT_SECONDS
+        loop = asyncio.get_running_loop()
+        consecutive_failures = 0
         while True:
+            started = loop.time()
             try:
                 async for event in self.client.async_iter_events():
                     self._handle_event(event)
@@ -166,10 +181,27 @@ class ElectroluxCoordinator(DataUpdateCoordinator[dict[str, ApplianceData]]):
                 raise
             except Exception as err:  # noqa: BLE001 — reconnect on anything
                 _LOGGER.debug("SSE stream error, reconnecting: %s", err)
+
+            # If the stream stayed up long enough, treat it as healthy and reset.
+            if loop.time() - started >= SSE_HEALTHY_SECONDS:
+                backoff = SSE_RECONNECT_SECONDS
+                consecutive_failures = 0
+            else:
+                consecutive_failures += 1
+                if consecutive_failures >= 3:
+                    _LOGGER.warning(
+                        "Electrolux SSE stream keeps dropping immediately "
+                        "(%d times); backing off %ds. Check API quota / the "
+                        "1-concurrent-channel limit.",
+                        consecutive_failures,
+                        backoff,
+                    )
+
             try:
-                await asyncio.sleep(SSE_RECONNECT_SECONDS)
+                await asyncio.sleep(backoff)
             except asyncio.CancelledError:
                 raise
+            backoff = min(backoff * 2, SSE_RECONNECT_MAX_SECONDS)
 
     @callback
     def _handle_event(self, event: dict) -> None:
@@ -202,11 +234,14 @@ class ElectroluxCoordinator(DataUpdateCoordinator[dict[str, ApplianceData]]):
         current = self.data[appliance_id]
         new_reported = dict(current.reported)
         for key, value in command.items():
-            new_reported[key] = value
+            # executeCommand is write-only — the device never reports it, so
+            # only derive applianceState from it, don't store the raw key.
             if key == PROP_EXECUTE_COMMAND:
                 new_reported[PROP_APPLIANCE_STATE] = (
                     STATE_RUNNING if value == "ON" else STATE_OFF
                 )
+                continue
+            new_reported[key] = value
         updated = ApplianceData(
             appliance_id=current.appliance_id,
             name=current.name,
