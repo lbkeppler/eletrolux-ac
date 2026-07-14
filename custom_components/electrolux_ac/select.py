@@ -31,10 +31,15 @@ def build_selects(
     coordinator: ElectroluxCoordinator, appliance_id: str
 ) -> list[SelectEntity]:
     caps = coordinator.data[appliance_id].capabilities
+    reported = coordinator.data[appliance_id].reported
     selects: list[SelectEntity] = []
     for name, cap in caps.items():
         kind, spec = classify_capability(name, cap)
         if kind is EntityKind.SELECT:
+            # R3: a phantom control (classifies as a select but is never in the
+            # reported state) has no valid read/write target — skip it.
+            if name not in reported:
+                continue
             selects.append(ElectroluxSelect(coordinator, appliance_id, name, cap, spec))
     return selects
 

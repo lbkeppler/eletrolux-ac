@@ -174,7 +174,7 @@ YI09F_EXPECTED = {
     "cleanFilterAlertReset": EntityKind.IGNORE,     # write
     "comfortAir": EntityKind.SWITCH,                # readwrite {ON,OFF}
     "currentEnergyUsePercent": EntityKind.SENSOR,   # read numeric
-    "displayLight": EntityKind.NUMBER,              # min0/max100, NO values
+    "displayLight": EntityKind.SWITCH,              # min/max + type=string -> on/off token switch (R1)
     "evaporatorDefrostState": EntityKind.SENSOR,    # read enum (2 values)
     "executeCommand": EntityKind.IGNORE,            # write
     "fanSpeedSetting": EntityKind.CLIMATE,
@@ -205,20 +205,24 @@ def test_yi09f_classification(name):
     assert _kind(YI09F, name) == YI09F_EXPECTED[name]
 
 
-def test_yi09f_display_light_number_spec():
+def test_yi09f_display_light_switch_spec():
+    # R1: a min/max range with type=string speaks on/off tokens, not integers.
     kind, spec = classify_capability("displayLight", YI09F["displayLight"])
-    assert kind == EntityKind.NUMBER
-    assert spec["min"] == 0
-    assert spec["max"] == 100
-    assert spec["step"] == 1
+    assert kind == EntityKind.SWITCH
+    assert spec["on"] == "DISPLAY_LIGHT_1"
+    assert spec["off"] == "DISPLAY_LIGHT_0"
 
 
-def test_yi09f_stop_time_number_spec():
+def test_yi09f_stop_time_number_hours_spec():
+    # R2: an off-timer in seconds (max 86400, step 3600) becomes an hours number.
     kind, spec = classify_capability("stopTime", YI09F["stopTime"])
     assert kind == EntityKind.NUMBER
     assert spec["min"] == 0
-    assert spec["max"] == 86400
-    assert spec["step"] == 3600
+    assert spec["max"] == 24
+    assert spec["step"] == 1
+    assert spec["unit"] == "h"
+    assert spec["device_class"] == "duration"
+    assert spec["scale"] == 3600
 
 
 def test_yi09f_flap_position_select_spec():
@@ -242,6 +246,9 @@ def test_yi09f_current_energy_use_percent_sensor_spec():
     assert kind == EntityKind.SENSOR
     assert spec["min"] == 0
     assert spec["max"] == 100
+    # R2 duration override must NOT fire (max 100 % 3600 != 0): plain % sensor.
+    assert "scale" not in spec
+    assert "unit" not in spec
 
 
 def test_yi09f_sound_volume_switch_spec():
@@ -260,8 +267,12 @@ def test_yi09f_clean_air_mode_is_binary_sensor():
 
 
 def test_same_name_diverges_on_access():
-    """cleanAirMode & displayLight prove classification is structure/access driven."""
+    """cleanAirMode proves classification is structure/access driven: same name,
+    readwrite on Frigidaire (switch) vs read on YI09F (binary sensor)."""
     assert _kind(FRIGIDAIRE, "cleanAirMode") == EntityKind.SWITCH
     assert _kind(YI09F, "cleanAirMode") == EntityKind.BINARY_SENSOR
+    # displayLight is a SWITCH on BOTH fixtures, but reached by DIFFERENT rules:
+    # Frigidaire via the values branch ({DISPLAY_LIGHT_0,1}); YI09F via the R1
+    # string+min/max sub-branch (no values, type=string).
     assert _kind(FRIGIDAIRE, "displayLight") == EntityKind.SWITCH
-    assert _kind(YI09F, "displayLight") == EntityKind.NUMBER
+    assert _kind(YI09F, "displayLight") == EntityKind.SWITCH

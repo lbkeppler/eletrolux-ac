@@ -219,7 +219,41 @@ def classify_capability(name: str, cap: dict[str, Any]) -> tuple[EntityKind, dic
 
     # 5. Numeric range (min/max present, no values).
     if "min" in cap and "max" in cap:
+        # 5a. R1: a numeric-looking range declared type=string speaks enum tokens
+        #     ("DISPLAY_LIGHT_0"), not integers — it's an on/off token control.
+        #     Genuine numbers (type number/int: stopTime, currentEnergyUsePercent)
+        #     skip this and fall through to the numeric spec below.
+        if cap_type == "string":
+            prefix = snake_case(name).upper()   # displayLight -> "DISPLAY_LIGHT"
+            lo = cap["min"]
+            off = f"{prefix}_{lo}"              # "DISPLAY_LIGHT_0"
+            on = f"{prefix}_{lo + 1}"          # "DISPLAY_LIGHT_1"
+            if access == "readwrite":
+                return EntityKind.SWITCH, {"on": on, "off": off}
+            return EntityKind.BINARY_SENSOR, {"on": on, "off": off}
+
         spec = {"min": cap["min"], "max": cap["max"], "step": cap.get("step", 1)}
+
+        # 5b. R2: an integer range whose bounds are whole hours (max a positive
+        #     multiple of 3600s, step also a multiple of 3600s) is a duration
+        #     off-timer in seconds — expose it in HOURS. currentEnergyUsePercent
+        #     (max 100) and temperatures never match.
+        if (
+            cap_type in {"number", "int"}
+            and cap["max"] >= 3600
+            and cap["max"] % 3600 == 0
+            and cap.get("step", 1) % 3600 == 0
+        ):
+            scale = 3600
+            spec = {
+                "min": cap["min"] // scale,
+                "max": cap["max"] // scale,
+                "step": cap.get("step", 1) // scale,
+                "unit": "h",
+                "device_class": "duration",
+                "scale": scale,
+            }
+
         if access == "readwrite":
             return EntityKind.NUMBER, spec
         if access == "read":

@@ -25,10 +25,16 @@ def build_switches(
     coordinator: ElectroluxCoordinator, appliance_id: str
 ) -> list[SwitchEntity]:
     caps = coordinator.data[appliance_id].capabilities
+    reported = coordinator.data[appliance_id].reported
     switches: list[SwitchEntity] = []
     for name, cap in caps.items():
         kind, spec = classify_capability(name, cap)
         if kind is EntityKind.SWITCH:
+            # R3: a phantom control (classifies as a switch but is never in the
+            # reported state, e.g. YI09F batchSchedulerMode) has no valid
+            # read/write target — skip it.
+            if name not in reported:
+                continue
             switches.append(ElectroluxSwitch(coordinator, appliance_id, name, spec))
     return switches
 

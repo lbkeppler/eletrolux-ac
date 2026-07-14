@@ -138,20 +138,43 @@ def test_frigidaire_display_light_is_switch_not_number():
 def test_yi09f_switches_are_the_readwrite_booleans():
     coord, aid = _real_coord()
     keys = _keys(build_switches(coord, aid))
-    # sleep/autoSense/batchScheduler/comfortAir/soundVolume are readwrite booleans
+    # R1: displayLight is now a switch (min/max + type=string on/off token).
+    # R3: batchSchedulerMode is a phantom (absent from reported) -> SKIPPED.
+    # sleep/autoSense/comfortAir/soundVolume are genuine readwrite booleans.
     assert keys == {
         "sleep_mode",
         "auto_sense_mode",
-        "batch_scheduler_mode",
         "comfort_air",
         "sound_volume",
+        "display_light",
     }
+    # batchSchedulerMode classifies SWITCH but is never reported -> skipped (R3)
+    assert "batch_scheduler_mode" not in keys
     # flapOscillate is climate's swing key -> NOT a switch
     assert "flap_oscillate" not in keys
     # cleanAirMode is read -> binary_sensor, NOT a switch
     assert "clean_air_mode" not in keys
-    # displayLight is a number here -> NOT a switch
-    assert "display_light" not in keys
+
+
+def test_yi09f_display_light_switch_reported_off():
+    # R1: reported "DISPLAY_LIGHT_0" == off token -> is_on False.
+    coord, aid = _real_coord()
+    dl = next(
+        s for s in build_switches(coord, aid) if s._attr_translation_key == "display_light"
+    )
+    assert dl._on_value == "DISPLAY_LIGHT_1"
+    assert dl._off_value == "DISPLAY_LIGHT_0"
+    assert dl.is_on is False
+
+
+async def test_yi09f_display_light_switch_turn_on_writes_token():
+    coord, aid = _real_coord()
+    coord.async_send_command = _AsyncRecorder()
+    dl = next(
+        s for s in build_switches(coord, aid) if s._attr_translation_key == "display_light"
+    )
+    await dl.async_turn_on()
+    assert coord.async_send_command.calls == [(aid, {"displayLight": "DISPLAY_LIGHT_1"})]
 
 
 def test_yi09f_sound_volume_switch_on_off():
@@ -166,32 +189,31 @@ def test_yi09f_sound_volume_switch_on_off():
 # --- YI09F numbers -----------------------------------------------------------
 
 
-def test_yi09f_numbers_display_light_and_stop_time():
+def test_yi09f_numbers_only_stop_time_in_hours():
+    # R1: displayLight is now a SWITCH, not a number.
+    # R2: stopTime is exposed in HOURS (seconds/3600).
     coord, aid = _real_coord()
     numbers = build_numbers(coord, aid)
     keys = _keys(numbers)
-    assert keys == {"display_light", "stop_time"}
-    dl = next(n for n in numbers if n._attr_translation_key == "display_light")
-    assert dl.native_min_value == 0
-    assert dl.native_max_value == 100
-    assert dl.native_step == 1
-    # reported "DISPLAY_LIGHT_0" coerces to 0 for a numeric cap
-    assert dl.native_value == 0
+    assert keys == {"stop_time"}
+    assert "display_light" not in keys
     st = next(n for n in numbers if n._attr_translation_key == "stop_time")
     assert st.native_min_value == 0
-    assert st.native_max_value == 86400
-    assert st.native_step == 3600
-    assert st.native_value == 0
+    assert st.native_max_value == 24
+    assert st.native_step == 1
+    # reported stopTime == 0 seconds -> 0.0 hours
+    assert st.native_value == 0.0
 
 
-async def test_yi09f_number_set_sends_int():
+async def test_yi09f_stop_time_set_writes_seconds():
+    # R2: setting 2 hours writes 7200 seconds back to the API.
     coord, aid = _real_coord()
     coord.async_send_command = _AsyncRecorder()
-    dl = next(
-        n for n in build_numbers(coord, aid) if n._attr_translation_key == "display_light"
+    st = next(
+        n for n in build_numbers(coord, aid) if n._attr_translation_key == "stop_time"
     )
-    await dl.async_set_native_value(42.0)
-    assert coord.async_send_command.calls == [(aid, {"displayLight": 42})]
+    await st.async_set_native_value(2)
+    assert coord.async_send_command.calls == [(aid, {"stopTime": 7200})]
 
 
 # --- YI09F selects -----------------------------------------------------------
