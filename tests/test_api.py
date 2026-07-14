@@ -163,12 +163,12 @@ async def test_get_info_retry_returns_after_transient_timeout_body(monkeypatch):
     assert "capabilities" in result
     assert result is real
     assert calls["n"] == 3
-    # backoff after the 1st and 2nd failures: 1s then 2s
-    assert sleeps == [1, 2]
+    # backoff after the 1st and 2nd failures: 2s then 4s (capped exp backoff)
+    assert sleeps == [2, 4]
 
 
-async def test_get_info_retry_raises_after_three_timeout_bodies(monkeypatch):
-    """Timeout body on all 3 attempts → ElectroluxApiError, no infinite loop."""
+async def test_get_info_retry_raises_after_all_attempts_timeout_bodies(monkeypatch):
+    """Timeout body on every attempt → ElectroluxApiError, no infinite loop."""
     calls = {"n": 0}
 
     async def always_timeout(appliance_id):
@@ -187,9 +187,52 @@ async def test_get_info_retry_raises_after_three_timeout_bodies(monkeypatch):
 
     with pytest.raises(ElectroluxApiError):
         await client.async_get_info_with_retry("app1")
+    # default attempts=5 → 5 calls, 4 backoff sleeps (2,4,8,16, capped at 30)
+    assert calls["n"] == 5
+    assert sleeps == [2, 4, 8, 16]
+
+
+async def test_get_info_retry_recovers_from_504_gateway(monkeypatch):
+    """A 502/503/504 gateway error is retryable (this is what the real API does
+    at boot) — retry twice then succeed. Regression for the 'no AC found' bug."""
+    real = _load("info.json")
+    calls = {"n": 0}
+
+    async def flaky(appliance_id):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise ElectroluxApiError(f"API error 504 for /info", status=504)
+        return real
+
+    client = _client_no_session()
+    monkeypatch.setattr(client, "async_get_info", flaky)
+
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay, *a, **k):
+        sleeps.append(delay)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    result = await client.async_get_info_with_retry("app1")
+    assert result is real
     assert calls["n"] == 3
-    # sleeps between the 3 attempts: 1s, 2s (no sleep after the final failure)
-    assert sleeps == [1, 2]
+    assert sleeps == [2, 4]
+
+
+async def test_get_info_retry_does_not_retry_real_4xx(monkeypatch):
+    """A genuine 4xx (e.g. 403) is NOT retried — propagates immediately."""
+    calls = {"n": 0}
+
+    async def forbidden(appliance_id):
+        calls["n"] += 1
+        raise ElectroluxApiError("API error 403 for /info", status=403)
+
+    client = _client_no_session()
+    monkeypatch.setattr(client, "async_get_info", forbidden)
+    with pytest.raises(ElectroluxApiError):
+        await client.async_get_info_with_retry("app1")
+    assert calls["n"] == 1  # no retry
 
 
 async def test_get_info_retry_recovers_from_connection_timeout(monkeypatch):
@@ -216,7 +259,7 @@ async def test_get_info_retry_recovers_from_connection_timeout(monkeypatch):
     result = await client.async_get_info_with_retry("app1")
     assert result is real
     assert calls["n"] == 3
-    assert sleeps == [1, 2]
+    assert sleeps == [2, 4]
 
 
 async def test_request_wraps_real_total_timeout_as_retryable():
@@ -264,7 +307,7 @@ async def test_get_info_retry_recovers_from_real_total_timeout(monkeypatch):
     result = await client.async_get_info_with_retry("app1")
     assert result == real
     assert calls["n"] == 3
-    assert sleeps == [1, 2]
+    assert sleeps == [2, 4]
 
 
 async def test_get_info_retry_does_not_retry_auth_error(monkeypatch):

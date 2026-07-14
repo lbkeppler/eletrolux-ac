@@ -165,35 +165,34 @@ class ElectroluxApiClient:
         return await self._request("GET", _INFO.format(id=appliance_id))
 
     async def async_get_info_with_retry(
-        self, appliance_id: str, *, attempts: int = 3
+        self, appliance_id: str, *, attempts: int = 5
     ) -> dict[str, Any]:
-        """Fetch /info, retrying the API's intermittent gateway timeouts.
+        """Fetch /info, retrying the API's intermittent gateway failures.
 
-        The real API sporadically answers ``GET /{id}/info`` with
-        ``{"message": "Endpoint request timed out"}`` — sometimes as an HTTP 200
-        body (no ``capabilities`` key), sometimes surfacing as a connection
-        timeout (``ElectroluxApiError`` whose message says "timed out"). Both
-        shapes are transient and retryable; real auth/other errors are NOT.
+        The real ``GET /{id}/info`` endpoint is flaky: it sporadically returns
+        an HTTP 502/503/504 gateway error, OR a 200 body of
+        ``{"message": "Endpoint request timed out"}`` (no ``capabilities`` key),
+        OR a real connection timeout. All three are transient and retryable;
+        real auth/4xx errors are NOT (they propagate immediately).
 
-        Retries up to ``attempts`` times with exponential backoff between tries
-        (``2 ** attempt`` seconds: 1s, 2s, ... — with the default 3 attempts
-        that is a 1s then a 2s sleep, no sleep after the last try), then raises
-        ``ElectroluxApiError`` so the caller (coordinator) can fall back to its
-        last-good cache. ``asyncio.sleep`` is used for the backoff so tests can
-        patch it.
+        Retries up to ``attempts`` times with exponential backoff capped at 30s
+        (2s, 4s, 8s, 16s...). A real /info always carries ``capabilities``.
+        Raises ``ElectroluxApiError`` after exhaustion so the caller can fall
+        back to its last-good cache. ``asyncio.sleep`` is used so tests patch it.
         """
         last_error: ElectroluxApiError | None = None
         for attempt in range(attempts):
             try:
                 info = await self.async_get_info(appliance_id)
             except ElectroluxApiError as err:
-                # Only connection-timeout-shaped errors are retryable. Auth and
-                # other API errors (e.g. 500) must propagate immediately.
-                if isinstance(err, ElectroluxAuthError) or not _is_timeout_message(
-                    str(err)
-                ):
+                # Retry gateway/timeout failures; propagate auth and real 4xx.
+                if isinstance(err, ElectroluxAuthError) or not _is_retryable(err):
                     raise
                 last_error = err
+                _LOGGER.debug(
+                    "GET /info attempt %d/%d for %s failed (%s); retrying",
+                    attempt + 1, attempts, appliance_id, err,
+                )
             else:
                 if not _is_timeout_body(info):
                     return info
@@ -202,10 +201,10 @@ class ElectroluxApiClient:
                 )
 
             if attempt < attempts - 1:
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(min(2 ** (attempt + 1), 30))
 
         raise ElectroluxApiError(
-            f"/info for {appliance_id} timed out after {attempts} attempts"
+            f"/info for {appliance_id} failed after {attempts} attempts"
         ) from last_error
 
     async def async_get_state(self, appliance_id: str) -> dict[str, Any]:
@@ -254,9 +253,26 @@ class ElectroluxApiClient:
                         _LOGGER.debug("Bad SSE payload: %s", payload)
 
 
+# 502/503/504 are gateway/proxy errors — transient, worth retrying. 500 is a
+# real server error and is NOT retried (it usually means a genuine failure).
+_RETRYABLE_STATUSES = frozenset({502, 503, 504})
+
+
 def _is_timeout_message(message: str) -> bool:
     """True if a message looks like the API's gateway-timeout text."""
     return "timed out" in message.lower()
+
+
+def _is_retryable(err: "ElectroluxApiError") -> bool:
+    """True if an /info error is a transient gateway/timeout worth retrying.
+
+    The Electrolux /info endpoint is flaky and answers intermittently with a
+    502/503/504 gateway error or a "timed out" message. Both are transient.
+    A real 4xx (bad request/forbidden) or any other error is NOT retried.
+    """
+    if err.status in _RETRYABLE_STATUSES:
+        return True
+    return _is_timeout_message(str(err))
 
 
 def _is_timeout_body(info: Any) -> bool:
