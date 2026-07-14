@@ -114,10 +114,11 @@ class ElectroluxCoordinator(DataUpdateCoordinator[dict[str, ApplianceData]]):
         self._appliance_ids: list[str] = []
         self._info: dict[str, dict] = {}
         self._appliance_by_id: dict[str, dict] = {}
+        self._discovered = False
 
     async def _async_update_data(self) -> dict[str, ApplianceData]:
         try:
-            if not self._appliance_ids:
+            if not self._discovered:
                 await self._async_discover()
             result: dict[str, ApplianceData] = {}
             for aid in self._appliance_ids:
@@ -133,6 +134,7 @@ class ElectroluxCoordinator(DataUpdateCoordinator[dict[str, ApplianceData]]):
     async def _async_discover(self) -> None:
         appliances = await self.client.async_get_appliances()
         self._appliance_by_id = {}
+        self._info = {}
         for appliance in appliances:
             aid = appliance["applianceId"]
             info = await self.client.async_get_info(aid)
@@ -146,6 +148,7 @@ class ElectroluxCoordinator(DataUpdateCoordinator[dict[str, ApplianceData]]):
             self._appliance_by_id[aid] = appliance
             self._info[aid] = info
         self._appliance_ids = list(self._appliance_by_id)
+        self._discovered = True
         if not self._appliance_ids:
             _LOGGER.warning(
                 "No AC appliances found among %d appliances; types=%s",
