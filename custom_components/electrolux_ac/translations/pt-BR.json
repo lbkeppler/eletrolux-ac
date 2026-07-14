@@ -45,7 +45,13 @@
       "link_quality": {"name": "Sinal Wi-Fi"},
       "appliance_state": {"name": "Estado do aparelho"},
       "current_energy_use_percent": {"name": "Consumo de energia"},
-      "evaporator_defrost_state": {"name": "Estado de degelo"}
+      "evaporator_defrost_state": {
+        "name": "Estado de degelo",
+        "state": {
+          "defrosting": "Descongelando",
+          "not_defrosting": "Sem degelo"
+        }
+      }
     },
     "switch": {
       "sleep_mode": {"name": "Modo noturno"},
@@ -59,7 +65,18 @@
       "sound_volume": {"name": "Sons"}
     },
     "select": {
-      "flap_position": {"name": "Posição da aleta"}
+      "flap_position": {
+        "name": "Posição da aleta",
+        "state": {
+          "position_0": "Automático",
+          "position_1": "Posição 1",
+          "position_2": "Posição 2",
+          "position_3": "Posição 3",
+          "position_4": "Posição 4",
+          "position_5": "Posição 5",
+          "position_6": "Posição 6"
+        }
+      }
     },
     "number": {
       "display_light": {"name": "Luz do display"},
