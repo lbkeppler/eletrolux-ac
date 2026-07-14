@@ -1,0 +1,28 @@
+{
+  "applianceInfo": {
+    "serialNumber": "94700001",
+    "pnc": "999011524",
+    "brand": "FRIGIDAIRE",
+    "deviceType": "PORTABLE_AIR_CONDITIONER",
+    "model": "GHPC132AB1",
+    "variant": "13KBTU",
+    "colour": "WHITE"
+  },
+  "capabilities": {
+    "ambientTemperatureC": {"access": "read", "type": "temperature"},
+    "applianceState": {"access": "read", "type": "string", "values": {"OFF": {}, "RUNNING": {}}},
+    "cleanAirMode": {"access": "readwrite", "type": "string", "values": {"OFF": {}, "ON": {}}},
+    "displayLight": {"access": "readwrite", "type": "string", "values": {"DISPLAY_LIGHT_0": {}, "DISPLAY_LIGHT_1": {}}},
+    "executeCommand": {"access": "write", "type": "string", "values": {"OFF": {}, "ON": {}}},
+    "fanSpeedSetting": {"access": "readwrite", "type": "string", "values": {"AUTO": {}, "HIGH": {}, "LOW": {}, "MIDDLE": {}}},
+    "filterState": {"access": "read", "type": "string", "values": {"BUY": {}, "CHANGE": {}, "CLEAN": {}, "GOOD": {}}},
+    "mode": {"access": "readwrite", "type": "string", "values": {"AUTO": {}, "COOL": {}, "DRY": {}, "FANONLY": {}, "OFF": {"disabled": true}}},
+    "schedulerMode": {"access": "readwrite", "type": "string", "values": {"OFF": {}, "ON": {}}},
+    "sleepMode": {"access": "readwrite", "type": "string", "values": {"OFF": {}, "ON": {}}},
+    "targetTemperatureC": {"access": "readwrite", "default": 15.56, "max": 32.22, "min": 15.56, "step": 1, "type": "temperature"},
+    "targetTemperatureF": {"access": "readwrite", "default": 60, "max": 90, "min": 60, "step": 1, "type": "temperature"},
+    "temperatureRepresentation": {"access": "readwrite", "type": "string", "values": {"CELSIUS": {}, "FAHRENHEIT": {}}},
+    "uiLockMode": {"access": "readwrite", "type": "boolean", "values": {"OFF": {}, "ON": {}}},
+    "verticalSwing": {"access": "readwrite", "type": "string", "values": {"OFF": {}, "ON": {}}}
+  }
+}
