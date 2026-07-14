@@ -1,0 +1,58 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Electrolux AC",
+        "description": "Enter the API key and JWT tokens from the Electrolux developer portal (developer.electrolux.one).",
+        "data": {
+          "api_key": "API key",
+          "access_token": "Access token (JWT)",
+          "refresh_token": "Refresh token"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Electrolux AC",
+        "description": "Your tokens expired. Paste fresh tokens from the developer portal.",
+        "data": {
+          "api_key": "API key",
+          "access_token": "Access token (JWT)",
+          "refresh_token": "Refresh token"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid credentials. Check your API key and tokens.",
+      "cannot_connect": "Failed to connect to the Electrolux API."
+    },
+    "abort": {
+      "already_configured": "This Electrolux account is already configured.",
+      "reauth_successful": "Re-authentication was successful.",
+      "wrong_account": "The tokens belong to a different Electrolux account."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "ambient_temperature": {"name": "Ambient temperature"},
+      "filter_state": {
+        "name": "Filter",
+        "state": {
+          "good": "Good",
+          "clean": "Clean",
+          "change": "Change",
+          "buy": "Buy new"
+        }
+      },
+      "link_quality": {"name": "Wi-Fi signal"}
+    },
+    "switch": {
+      "sleep_mode": {"name": "Sleep mode"},
+      "clean_air_mode": {"name": "Clean air"},
+      "ui_lock_mode": {"name": "Panel lock"},
+      "scheduler_mode": {"name": "Scheduler"},
+      "display_light": {"name": "Display light"}
+    },
+    "binary_sensor": {
+      "connectivity": {"name": "Connectivity"}
+    }
+  }
+}

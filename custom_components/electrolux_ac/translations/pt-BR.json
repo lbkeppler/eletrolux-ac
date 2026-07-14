@@ -1,0 +1,58 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Electrolux AC",
+        "description": "Informe a chave de API e os tokens JWT do portal de desenvolvedor da Electrolux (developer.electrolux.one).",
+        "data": {
+          "api_key": "Chave de API",
+          "access_token": "Token de acesso (JWT)",
+          "refresh_token": "Token de atualização"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reautenticar Electrolux AC",
+        "description": "Seus tokens expiraram. Cole tokens novos do portal de desenvolvedor.",
+        "data": {
+          "api_key": "Chave de API",
+          "access_token": "Token de acesso (JWT)",
+          "refresh_token": "Token de atualização"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Credenciais inválidas. Verifique a chave de API e os tokens.",
+      "cannot_connect": "Falha ao conectar à API da Electrolux."
+    },
+    "abort": {
+      "already_configured": "Esta conta Electrolux já está configurada.",
+      "reauth_successful": "Reautenticação concluída com sucesso.",
+      "wrong_account": "Os tokens pertencem a outra conta Electrolux."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "ambient_temperature": {"name": "Temperatura ambiente"},
+      "filter_state": {
+        "name": "Filtro",
+        "state": {
+          "good": "Bom",
+          "clean": "Limpar",
+          "change": "Trocar",
+          "buy": "Comprar novo"
+        }
+      },
+      "link_quality": {"name": "Sinal Wi-Fi"}
+    },
+    "switch": {
+      "sleep_mode": {"name": "Modo noturno"},
+      "clean_air_mode": {"name": "Ar limpo"},
+      "ui_lock_mode": {"name": "Trava do painel"},
+      "scheduler_mode": {"name": "Agendador"},
+      "display_light": {"name": "Luz do display"}
+    },
+    "binary_sensor": {
+      "connectivity": {"name": "Conectividade"}
+    }
+  }
+}
