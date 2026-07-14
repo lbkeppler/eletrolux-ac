@@ -1,0 +1,23 @@
+{
+  "applianceId": "999011524_00:94700001-443E070ABC12",
+  "connectionState": "connected",
+  "status": "enabled",
+  "properties": {
+    "reported": {
+      "mode": "COOL",
+      "targetTemperatureC": 21,
+      "ambientTemperatureC": 22,
+      "fanSpeedSetting": "AUTO",
+      "verticalSwing": "OFF",
+      "sleepMode": "OFF",
+      "cleanAirMode": "OFF",
+      "displayLight": "DISPLAY_LIGHT_1",
+      "uiLockMode": false,
+      "schedulerMode": "OFF",
+      "filterState": "GOOD",
+      "applianceState": "RUNNING",
+      "temperatureRepresentation": "CELSIUS",
+      "networkInterface": {"linkQualityIndicator": "VERY_GOOD", "swVersion": "v1.9.1_srac"}
+    }
+  }
+}

@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+# Dev/test dependencies are pinned in requirements_test.txt (pytest-homeassistant-custom-component),
+# which also pulls in Home Assistant, pytest, and the async/aiohttp test plugins used by this suite.

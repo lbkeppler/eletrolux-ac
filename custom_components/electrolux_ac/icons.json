@@ -1,0 +1,15 @@
+{
+  "entity": {
+    "switch": {
+      "sleep_mode": {"default": "mdi:power-sleep"},
+      "clean_air_mode": {"default": "mdi:air-purifier"},
+      "ui_lock_mode": {"default": "mdi:lock"},
+      "scheduler_mode": {"default": "mdi:calendar-clock"},
+      "display_light": {"default": "mdi:television-ambient-light"}
+    },
+    "sensor": {
+      "filter_state": {"default": "mdi:air-filter"},
+      "link_quality": {"default": "mdi:wifi"}
+    }
+  }
+}

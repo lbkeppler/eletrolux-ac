@@ -1,0 +1,90 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Electrolux AC",
+        "description": "Informe a chave de API e os tokens JWT do portal de desenvolvedor da Electrolux (developer.electrolux.one).",
+        "data": {
+          "api_key": "Chave de API",
+          "access_token": "Token de acesso (JWT)",
+          "refresh_token": "Token de atualização"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reautenticar Electrolux AC",
+        "description": "Seus tokens expiraram. Cole tokens novos do portal de desenvolvedor.",
+        "data": {
+          "api_key": "Chave de API",
+          "access_token": "Token de acesso (JWT)",
+          "refresh_token": "Token de atualização"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Credenciais inválidas. Verifique a chave de API e os tokens.",
+      "cannot_connect": "Falha ao conectar à API da Electrolux."
+    },
+    "abort": {
+      "already_configured": "Esta conta Electrolux já está configurada.",
+      "reauth_successful": "Reautenticação concluída com sucesso.",
+      "wrong_account": "Os tokens pertencem a outra conta Electrolux."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "ambient_temperature": {"name": "Temperatura ambiente"},
+      "filter_state": {
+        "name": "Filtro",
+        "state": {
+          "good": "Bom",
+          "clean": "Limpar",
+          "change": "Trocar",
+          "buy": "Comprar novo"
+        }
+      },
+      "link_quality": {"name": "Sinal Wi-Fi"},
+      "appliance_state": {"name": "Estado do aparelho"},
+      "current_energy_use_percent": {"name": "Consumo de energia"},
+      "evaporator_defrost_state": {
+        "name": "Estado de degelo",
+        "state": {
+          "defrosting": "Descongelando",
+          "not_defrosting": "Sem degelo"
+        }
+      }
+    },
+    "switch": {
+      "sleep_mode": {"name": "Modo noturno"},
+      "clean_air_mode": {"name": "Ar limpo"},
+      "ui_lock_mode": {"name": "Trava do painel"},
+      "scheduler_mode": {"name": "Agendador"},
+      "display_light": {"name": "Luz do display"},
+      "auto_sense_mode": {"name": "Sensor automático"},
+      "batch_scheduler_mode": {"name": "Agendador"},
+      "comfort_air": {"name": "Ar confortável"},
+      "sound_volume": {"name": "Sons"}
+    },
+    "select": {
+      "flap_position": {
+        "name": "Posição da aleta",
+        "state": {
+          "position_0": "Automático",
+          "position_1": "Posição 1",
+          "position_2": "Posição 2",
+          "position_3": "Posição 3",
+          "position_4": "Posição 4",
+          "position_5": "Posição 5",
+          "position_6": "Posição 6"
+        }
+      }
+    },
+    "number": {
+      "display_light": {"name": "Luz do display"},
+      "stop_time": {"name": "Temporizador de desligamento"}
+    },
+    "binary_sensor": {
+      "connectivity": {"name": "Conectividade"},
+      "clean_air_mode": {"name": "Ar limpo"}
+    }
+  }
+}

@@ -24,6 +24,7 @@ Every task's requirements implicitly include this section. Values are copied ver
 - **Config entry storage:** use `entry.runtime_data` (type alias **must** be suffixed `ConfigEntry`: `ElectroluxConfigEntry = ConfigEntry[ElectroluxCoordinator]`). Never mutate `entry.data` directly — use `hass.config_entries.async_update_entry(...)`.
 - **Coordinator:** always pass `config_entry=entry` to `DataUpdateCoordinator.__init__`; use `always_update=False`.
 - **Repo secrets:** `.env` and `*.har` are already in `.gitignore` (they contain real tokens) — never stage or commit them.
+- **Running tests (WSL, NOT Windows):** Home Assistant's `runner.py` imports `fcntl` (POSIX-only), so pytest cannot run under native Windows Python. Run every `pytest` command inside WSL: `wsl -d FedoraLinux-43 -- bash -lc 'cd /mnt/c/Users/Lucas/Documents/GitHub/eletrolux-ac && ~/electrolux-venv/bin/python -m pytest <args>'`. The WSL venv (`~/electrolux-venv`) has Python 3.14.5 + PHACC 0.13.346 (HA 2026.7.2). The Windows `.venv/` is only for quick `import`/symbol checks, never for pytest.
 - **TDD:** every task writes the failing test first, watches it fail, implements minimally, watches it pass, commits. Commit after every green task.
 - **GitHub repo:** `https://github.com/lbkeppler/eletrolux-ac`.
 
@@ -2046,13 +2047,17 @@ class ElectroluxClimate(ElectroluxEntity, ClimateEntity):
 Run: `pytest tests/test_climate.py -v`
 Expected: PASS (8 tests).
 
-- [ ] **Step 6: Enable the deferred assertion in `tests/test_init.py`**
+- [ ] **Step 6: Create `tests/test_init.py` (deferred from Task 5) — the full integration test**
 
-Add to `test_setup_and_unload_entry`, after `assert entry.state is ConfigEntryState.LOADED`:
+Task 5 built `__init__.py` but could not run its integration test, because HA 2026.7.2 requires `config_flow.py` (Task 6) AND all platform modules (Tasks 7–8) to exist before an entry can reach `LOADED` (`async_forward_entry_setups` raises `ModuleNotFoundError` for a missing platform module). Now that climate exists — and config_flow (Task 6) and the other platforms are created in Task 8 — create the full `tests/test_init.py`. The implementer's Task-5 version is preserved at `.superpowers/sdd/task5-test_init-deferred.py`; use it and INCLUDE the climate-entity assertion:
+
 ```python
+    assert entry.state is ConfigEntryState.LOADED
     assert hass.states.async_entity_ids("climate")
 ```
-Run: `pytest tests/test_init.py -v` → Expected: PASS.
+
+**Important:** this test forwards to ALL platforms in `const.PLATFORMS` (climate, sensor, switch, select, binary_sensor). Those all exist only AFTER Task 8. So this test's green gate belongs at the END of Task 8, not here. In Task 7: create `tests/test_init.py` but mark the whole-integration test with `@pytest.mark.skip(reason="needs all platforms — enabled in Task 8")`, keeping any climate-only unit assertions runnable. In Task 8's final step, remove the skip and confirm it passes. (If you prefer, defer creating `test_init.py` entirely to Task 8 — either way, the LOADED + climate assertions must be green by the end of Task 8.)
+Run: `pytest tests/test_climate.py -v` → Expected: PASS (climate tests). `test_init.py` full green is confirmed at the end of Task 8.
 
 - [ ] **Step 7: Commit**
 
@@ -2430,11 +2435,20 @@ class ElectroluxConnectivity(ElectroluxEntity, BinarySensorEntity):
 Run: `pytest tests/test_platforms.py -v`
 Expected: PASS (3 tests).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Enable the full integration test (`tests/test_init.py`)**
+
+All five platform modules now exist, so `async_forward_entry_setups` no longer raises. Remove the `@pytest.mark.skip` from `tests/test_init.py` (added in Task 7), or create it now from `.superpowers/sdd/task5-test_init-deferred.py` with the climate-entity assertion included:
+```python
+    assert entry.state is ConfigEntryState.LOADED
+    assert hass.states.async_entity_ids("climate")
+```
+Run: `pytest tests/test_init.py -v` → Expected: PASS (entry reaches LOADED, a climate entity exists, unload reaches NOT_LOADED, no leaked-task warnings).
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add custom_components/electrolux_ac/sensor.py custom_components/electrolux_ac/switch.py custom_components/electrolux_ac/select.py custom_components/electrolux_ac/binary_sensor.py tests/test_platforms.py
-git commit -m "feat: sensor, switch, select, binary_sensor platforms (capability-driven)"
+git add custom_components/electrolux_ac/sensor.py custom_components/electrolux_ac/switch.py custom_components/electrolux_ac/select.py custom_components/electrolux_ac/binary_sensor.py tests/test_platforms.py tests/test_init.py
+git commit -m "feat: sensor, switch, select, binary_sensor platforms + full integration test"
 ```
 
 ---
@@ -2752,17 +2766,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: pip install -r requirements_test.txt
       - run: pytest -v
 ```
 
 `requirements_test.txt`:
 ```
-pytest-homeassistant-custom-component
+pytest-homeassistant-custom-component==0.13.346
 ```
 
-> **Implementer note:** pin `pytest-homeassistant-custom-component` to the version whose bundled HA matches `hacs.json`'s `homeassistant` floor once you confirm the local test run passes (e.g. `pytest-homeassistant-custom-component==0.13.xxx`). The research flagged that the newest PHACC needs Python 3.14; if CI's 3.13 conflicts with the pinned PHACC, either bump the workflow to the Python version that PHACC requires or pin an older PHACC that supports 3.13. Resolve by running `pip index versions pytest-homeassistant-custom-component` and picking a compatible pair; update the `python-version` accordingly.
+> **Environment note (already provisioned locally):** the test environment uses **Python 3.14 + `pytest-homeassistant-custom-component==0.13.346`, which bundles Home Assistant 2026.7.2** — the exact HA version running on the user's HAOS server, and one that ships `AddConfigEntryEntitiesCallback`. Run all `pytest` commands with the repo's `.venv` interpreter (`.venv/Scripts/python.exe -m pytest ...`). Do not downgrade PHACC — an older one bundles an HA too old for `AddConfigEntryEntitiesCallback`.
 
 `README.md`:
 ```markdown
