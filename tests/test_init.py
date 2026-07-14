@@ -34,6 +34,7 @@ def _patch_client():
     inst = AsyncMock()
     inst.async_get_appliances = AsyncMock(return_value=_load("appliances.json"))
     inst.async_get_info = AsyncMock(return_value=_load("info.json"))
+    inst.async_get_info_with_retry = AsyncMock(return_value=_load("info.json"))
     inst.async_get_state = AsyncMock(return_value=_load("state.json"))
     inst.async_iter_events = _never
     return patch(

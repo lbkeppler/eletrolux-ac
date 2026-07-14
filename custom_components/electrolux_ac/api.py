@@ -157,6 +157,48 @@ class ElectroluxApiClient:
     async def async_get_info(self, appliance_id: str) -> dict[str, Any]:
         return await self._request("GET", _INFO.format(id=appliance_id))
 
+    async def async_get_info_with_retry(
+        self, appliance_id: str, *, attempts: int = 3
+    ) -> dict[str, Any]:
+        """Fetch /info, retrying the API's intermittent gateway timeouts.
+
+        The real API sporadically answers ``GET /{id}/info`` with
+        ``{"message": "Endpoint request timed out"}`` — sometimes as an HTTP 200
+        body (no ``capabilities`` key), sometimes surfacing as a connection
+        timeout (``ElectroluxApiError`` whose message says "timed out"). Both
+        shapes are transient and retryable; real auth/other errors are NOT.
+
+        Retries up to ``attempts`` times with 1s, 2s, 4s backoff, then raises
+        ``ElectroluxApiError`` so the caller (coordinator) can fall back to its
+        last-good cache. ``asyncio.sleep`` is used for the backoff so tests can
+        patch it.
+        """
+        last_error: ElectroluxApiError | None = None
+        for attempt in range(attempts):
+            try:
+                info = await self.async_get_info(appliance_id)
+            except ElectroluxApiError as err:
+                # Only connection-timeout-shaped errors are retryable. Auth and
+                # other API errors (e.g. 500) must propagate immediately.
+                if isinstance(err, ElectroluxAuthError) or not _is_timeout_message(
+                    str(err)
+                ):
+                    raise
+                last_error = err
+            else:
+                if not _is_timeout_body(info):
+                    return info
+                last_error = ElectroluxApiError(
+                    f"/info for {appliance_id} timed out (body)"
+                )
+
+            if attempt < attempts - 1:
+                await asyncio.sleep(2 ** attempt)
+
+        raise ElectroluxApiError(
+            f"/info for {appliance_id} timed out after {attempts} attempts"
+        ) from last_error
+
     async def async_get_state(self, appliance_id: str) -> dict[str, Any]:
         return await self._request("GET", _STATE.format(id=appliance_id))
 
@@ -201,6 +243,26 @@ class ElectroluxApiClient:
                         yield json.loads(payload)
                     except json.JSONDecodeError:
                         _LOGGER.debug("Bad SSE payload: %s", payload)
+
+
+def _is_timeout_message(message: str) -> bool:
+    """True if a message looks like the API's gateway-timeout text."""
+    return "timed out" in message.lower()
+
+
+def _is_timeout_body(info: Any) -> bool:
+    """True if an /info response is the timeout placeholder rather than real data.
+
+    The timeout shape is a dict with NO ``capabilities`` key whose ``message``
+    mentions "timed out" (case-insensitive). A real /info always carries
+    ``capabilities``.
+    """
+    if not isinstance(info, dict):
+        return False
+    if "capabilities" in info:
+        return False
+    message = info.get("message")
+    return isinstance(message, str) and _is_timeout_message(message)
 
 
 async def _safe_json(resp: aiohttp.ClientResponse) -> dict[str, Any] | None:

@@ -136,10 +136,38 @@ class ElectroluxCoordinator(DataUpdateCoordinator[dict[str, ApplianceData]]):
     async def _async_discover(self) -> None:
         appliances = await self.client.async_get_appliances()
         self._appliance_by_id = {}
-        self._info = {}
+        # NOTE: self._info is the last-good cache and MUST survive across
+        # re-discovers — do NOT reset it here. On a transient /info timeout we
+        # fall back to the previously cached capabilities rather than dropping
+        # the appliance or failing setup.
         for appliance in appliances:
             aid = appliance["applianceId"]
-            info = await self.client.async_get_info(aid)
+            try:
+                info = await self.client.async_get_info_with_retry(aid)
+            except ElectroluxAuthError:
+                # A real auth failure is not a per-appliance transient — let it
+                # bubble up to become a reauth flow in _async_update_data.
+                raise
+            except ElectroluxApiError as err:
+                cached = self._info.get(aid)
+                if cached is not None:
+                    _LOGGER.warning(
+                        "GET /info timed out for %s (%s); reusing last-good "
+                        "cached capabilities",
+                        aid,
+                        err,
+                    )
+                    self._appliance_by_id[aid] = appliance
+                    # cached info already in self._info — keep it.
+                    continue
+                _LOGGER.warning(
+                    "GET /info unavailable for %s (%s) and no cached "
+                    "capabilities exist; skipping this appliance",
+                    aid,
+                    err,
+                )
+                continue
+
             device_type = info.get("applianceInfo", {}).get("deviceType") or ""
             is_ac = (
                 appliance.get("applianceType") == "AC"

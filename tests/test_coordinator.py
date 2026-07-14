@@ -83,6 +83,7 @@ def _mock_client():
     client = MagicMock()
     client.async_get_appliances = AsyncMock(return_value=_load("appliances.json"))
     client.async_get_info = AsyncMock(return_value=_load("info.json"))
+    client.async_get_info_with_retry = AsyncMock(return_value=_load("info.json"))
     client.async_get_state = AsyncMock(return_value=_load("state.json"))
     client.async_send_command = AsyncMock()
     return client
@@ -116,6 +117,77 @@ async def test_discovery_falls_back_to_device_type(hass):
     assert aid in data  # kept via deviceType fallback (PORTABLE_AIR_CONDITIONER)
 
 
+# --- G4: /info timeout resilience in discovery ------------------------------
+
+
+def _real_appliances_two():
+    """Two appliances so we can prove one bad /info doesn't sink the rest."""
+    base = _load("appliances.json")[0]
+    a = {**base, "applianceId": "AID_GOOD", "applianceName": "Good AC"}
+    b = {**base, "applianceId": "AID_BAD", "applianceName": "Bad AC"}
+    return [a, b]
+
+
+async def test_discover_skips_appliance_with_no_cache_on_timeout(hass, caplog):
+    """First-ever discover: one appliance's /info times out (no cache) → it is
+    skipped with a warning, the other appliance still sets up."""
+    entry = _entry()
+    entry.add_to_hass(hass)
+    client = _mock_client()
+    client.async_get_appliances = AsyncMock(return_value=_real_appliances_two())
+
+    async def info_by_id(appliance_id):
+        if appliance_id == "AID_BAD":
+            raise ElectroluxApiError("Endpoint request timed out")
+        return _load("info.json")
+
+    client.async_get_info_with_retry = AsyncMock(side_effect=info_by_id)
+    coord = ElectroluxCoordinator(hass, entry, client)
+    data = await coord._async_update_data()
+
+    assert "AID_GOOD" in data           # good appliance survived
+    assert "AID_BAD" not in data        # bad appliance skipped, not fatal
+    assert "AID_BAD" in caplog.text or "Bad AC" in caplog.text
+
+
+async def test_discover_reuses_cached_info_on_later_timeout(hass, caplog):
+    """A re-discover where /info now times out for an appliance that already
+    succeeded once → the cached capabilities are reused, appliance NOT dropped."""
+    entry = _entry()
+    entry.add_to_hass(hass)
+    client = _mock_client()
+    aid = "999011524_00:94700001-443E070ABC12"
+
+    # First discover succeeds and caches /info.
+    coord = ElectroluxCoordinator(hass, entry, client)
+    await coord._async_discover()
+    assert aid in coord._info
+    cached = coord._info[aid]
+
+    # Force a re-discover; this time /info times out for that appliance.
+    coord._discovered = False
+    client.async_get_info_with_retry = AsyncMock(
+        side_effect=ElectroluxApiError("Endpoint request timed out")
+    )
+    caplog.clear()
+    await coord._async_discover()
+
+    assert aid in coord._info                 # not dropped
+    assert coord._info[aid] == cached          # reused last-good capabilities
+    assert aid in coord._appliance_ids
+    assert "cached" in caplog.text.lower() or "last" in caplog.text.lower()
+
+
+async def test_discover_uses_retry_method(hass):
+    """The discover path must go through the retrying fetch, not raw async_get_info."""
+    entry = _entry()
+    entry.add_to_hass(hass)
+    client = _mock_client()
+    coord = ElectroluxCoordinator(hass, entry, client)
+    await coord._async_discover()
+    assert client.async_get_info_with_retry.await_count >= 1
+
+
 async def test_discovery_no_ac_logs_warning(hass, caplog):
     """Zero ACs discovered → warning logged, empty data returned."""
     entry = _entry()
@@ -124,9 +196,9 @@ async def test_discovery_no_ac_logs_warning(hass, caplog):
     listing = [{**_load("appliances.json")[0], "applianceType": "WM"}]
     client.async_get_appliances = AsyncMock(return_value=listing)
     # info without an AC deviceType
-    client.async_get_info = AsyncMock(
-        return_value={"applianceInfo": {"deviceType": "WASHING_MACHINE", "brand": "AEG", "model": "X"}, "capabilities": {}}
-    )
+    non_ac_info = {"applianceInfo": {"deviceType": "WASHING_MACHINE", "brand": "AEG", "model": "X"}, "capabilities": {}}
+    client.async_get_info = AsyncMock(return_value=non_ac_info)
+    client.async_get_info_with_retry = AsyncMock(return_value=non_ac_info)
     coord = ElectroluxCoordinator(hass, entry, client)
     data = await coord._async_update_data()
     assert data == {}

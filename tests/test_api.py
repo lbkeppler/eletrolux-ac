@@ -2,6 +2,7 @@
 import asyncio
 import json
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -105,3 +106,134 @@ async def test_send_command_202_is_success(aioclient_mock, session):
     )
     client = ElectroluxApiClient(session, "key", "acc", "ref")
     await client.async_send_command(appliance, {"mode": "COOL"})  # no raise
+
+
+# --- G4: /info retry on intermittent "Endpoint request timed out" -----------
+
+TIMEOUT_BODY = {"message": "Endpoint request timed out"}
+
+
+def _client_no_session():
+    """A client we can drive by monkeypatching async_get_info directly."""
+    return ElectroluxApiClient(MagicMock(), "key", "acc", "ref")
+
+
+async def test_get_info_retry_returns_after_transient_timeout_body(monkeypatch):
+    """Two timeout-shaped bodies, then a real /info → retry returns the real info."""
+    real = _load("info.json")
+    responses = [dict(TIMEOUT_BODY), dict(TIMEOUT_BODY), real]
+    calls = {"n": 0}
+
+    async def fake_get_info(appliance_id):
+        i = calls["n"]
+        calls["n"] += 1
+        return responses[i]
+
+    client = _client_no_session()
+    monkeypatch.setattr(client, "async_get_info", fake_get_info)
+
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay, *a, **k):
+        sleeps.append(delay)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    result = await client.async_get_info_with_retry("app1")
+    assert "capabilities" in result
+    assert result is real
+    assert calls["n"] == 3
+    # backoff after the 1st and 2nd failures: 1s then 2s
+    assert sleeps == [1, 2]
+
+
+async def test_get_info_retry_raises_after_three_timeout_bodies(monkeypatch):
+    """Timeout body on all 3 attempts → ElectroluxApiError, no infinite loop."""
+    calls = {"n": 0}
+
+    async def always_timeout(appliance_id):
+        calls["n"] += 1
+        return dict(TIMEOUT_BODY)
+
+    client = _client_no_session()
+    monkeypatch.setattr(client, "async_get_info", always_timeout)
+
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay, *a, **k):
+        sleeps.append(delay)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    with pytest.raises(ElectroluxApiError):
+        await client.async_get_info_with_retry("app1")
+    assert calls["n"] == 3
+    # sleeps between the 3 attempts: 1s, 2s (no sleep after the final failure)
+    assert sleeps == [1, 2]
+
+
+async def test_get_info_retry_recovers_from_connection_timeout(monkeypatch):
+    """An aiohttp/ElectroluxApiError 'timed out' is retryable too, then succeeds."""
+    real = _load("info.json")
+    calls = {"n": 0}
+
+    async def flaky(appliance_id):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise ElectroluxApiError("Connection error: Endpoint request timed out")
+        return real
+
+    client = _client_no_session()
+    monkeypatch.setattr(client, "async_get_info", flaky)
+
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay, *a, **k):
+        sleeps.append(delay)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    result = await client.async_get_info_with_retry("app1")
+    assert result is real
+    assert calls["n"] == 3
+    assert sleeps == [1, 2]
+
+
+async def test_get_info_retry_does_not_retry_auth_error(monkeypatch):
+    """A real auth failure must propagate immediately, NOT be retried."""
+    calls = {"n": 0}
+
+    async def auth_fail(appliance_id):
+        calls["n"] += 1
+        raise ElectroluxAuthError("Unauthorized (401)", status=401)
+
+    client = _client_no_session()
+    monkeypatch.setattr(client, "async_get_info", auth_fail)
+
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay, *a, **k):
+        sleeps.append(delay)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    with pytest.raises(ElectroluxAuthError):
+        await client.async_get_info_with_retry("app1")
+    assert calls["n"] == 1
+    assert sleeps == []  # never backed off → never retried
+
+
+async def test_get_info_retry_does_not_retry_non_timeout_api_error(monkeypatch):
+    """A non-timeout ElectroluxApiError (e.g. 500) must propagate immediately."""
+    calls = {"n": 0}
+
+    async def server_error(appliance_id):
+        calls["n"] += 1
+        raise ElectroluxApiError("API error 500 for /info", status=500)
+
+    client = _client_no_session()
+    monkeypatch.setattr(client, "async_get_info", server_error)
+
+    with pytest.raises(ElectroluxApiError):
+        await client.async_get_info_with_retry("app1")
+    assert calls["n"] == 1
